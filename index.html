@@ -1675,6 +1675,26 @@ async function _fetchWithTimeout(url, ms = 10000){
   finally { clearTimeout(t); }
 }
 
+// CORS proxies — public Piped/Invidious instances often don't allow CORS
+// from arbitrary origins (like github.io). We wrap API calls through these
+// general-purpose proxies. Tries each in order until one works.
+const CORS_PROXIES = [
+  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+];
+async function _fetchViaProxy(url, ms = 10000){
+  let lastErr = null;
+  for(const wrap of CORS_PROXIES){
+    try {
+      const r = await _fetchWithTimeout(wrap(url), ms);
+      if(r.ok) return r;
+      lastErr = new Error(`Proxy HTTP ${r.status}`);
+    } catch(e){ lastErr = e; }
+  }
+  throw lastErr ?? new Error('All CORS proxies failed');
+}
+
 async function _streamToBlob(resp, onProgress, mime){
   const total = parseInt(resp.headers.get('content-length')) || 0;
   const reader = resp.body.getReader();
@@ -1693,34 +1713,43 @@ async function _streamToBlob(resp, onProgress, mime){
   return new Blob(chunks, { type: mime || 'audio/mp4' });
 }
 
+// Fetch audio: try direct first (cheapest), then via CORS proxy if blocked.
+async function _fetchAudio(url, onProgress, mime){
+  let resp;
+  try {
+    resp = await _fetchWithTimeout(url, 30000);
+    if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
+  } catch(e) {
+    // Likely CORS or network — retry via proxy
+    onProgress?.(0.1, '音声DL中 (CORSプロキシ経由)');
+    resp = await _fetchViaProxy(url, 60000);
+  }
+  return _streamToBlob(resp, onProgress, mime);
+}
+
 async function _tryPiped(api, videoId, onProgress){
-  const resp = await _fetchWithTimeout(`${api}/streams/${encodeURIComponent(videoId)}`, 10000);
-  if(!resp.ok) throw new Error(`Piped API HTTP ${resp.status}`);
+  const apiUrl = `${api}/streams/${encodeURIComponent(videoId)}`;
+  const resp = await _fetchViaProxy(apiUrl, 10000);
   const data = await resp.json();
   const streams = data.audioStreams;
   if(!streams?.length) throw new Error('audioStreams 空');
   const sorted = [...streams].sort((a,b)=>(parseInt(a.bitrate||a.quality)||999)-(parseInt(b.bitrate||b.quality)||999));
   const s = sorted[0];
-  onProgress?.(0.1, `音声DL中 (${s.quality||s.format||'?'})`);
-  const audio = await _fetchWithTimeout(s.url, 30000);
-  if(!audio.ok) throw new Error(`音声DL HTTP ${audio.status}`);
-  return _streamToBlob(audio, onProgress, s.mimeType);
+  onProgress?.(0.08, `音声DL中 (${s.quality||s.format||'?'})`);
+  return _fetchAudio(s.url, onProgress, s.mimeType);
 }
 
 async function _tryInvidious(api, videoId, onProgress){
-  const resp = await _fetchWithTimeout(`${api}/api/v1/videos/${encodeURIComponent(videoId)}?fields=adaptiveFormats`, 10000);
-  if(!resp.ok) throw new Error(`Invidious API HTTP ${resp.status}`);
+  const apiUrl = `${api}/api/v1/videos/${encodeURIComponent(videoId)}?fields=adaptiveFormats`;
+  const resp = await _fetchViaProxy(apiUrl, 10000);
   const data = await resp.json();
   const fmts = (data.adaptiveFormats || []).filter(f => (f.type||'').startsWith('audio/'));
   if(!fmts.length) throw new Error('audio format なし');
   fmts.sort((a,b)=>(parseInt(a.bitrate)||999)-(parseInt(b.bitrate)||999));
   const f = fmts[0];
-  // Some instances need ?local=true on audio URL to enable CORS proxy
   const url = f.url.includes('local=true') ? f.url : f.url + (f.url.includes('?')?'&':'?') + 'local=true';
-  onProgress?.(0.1, `音声DL中 (${f.bitrate||'?'}kbps)`);
-  const audio = await _fetchWithTimeout(url, 30000);
-  if(!audio.ok) throw new Error(`音声DL HTTP ${audio.status}`);
-  return _streamToBlob(audio, onProgress, f.type);
+  onProgress?.(0.08, `音声DL中 (${f.bitrate||'?'}bps)`);
+  return _fetchAudio(url, onProgress, f.type);
 }
 
 async function fetchYouTubeAudio(videoId, onProgress){
