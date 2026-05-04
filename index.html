@@ -716,6 +716,7 @@ function removePanel(id){
   $('pg').querySelector('#'+id)?.remove();
   delete panels[id];
   updateGrid();
+  if(typeof equalizeSegHeights==='function') equalizeSegHeights();
   notif('パネルを削除しました');
 }
 
@@ -973,7 +974,26 @@ function renderSegmentUI(id){
   const psb=$('psb_'+id), nsb=$('nsb_'+id);
   if(psb)psb.disabled=segs.length===0;
   if(nsb)nsb.disabled=segs.length===0;
+
+  // ── Equalize seg-btns heights across panels (so video areas align) ──
+  equalizeSegHeights();
 }
+
+// Match every .seg-btns container's min-height to the tallest one. Keeps the
+// video viewports aligned even when one panel has many more segments than another.
+let _segEqualizeRAF = null;
+function equalizeSegHeights(){
+  if(_segEqualizeRAF) cancelAnimationFrame(_segEqualizeRAF);
+  _segEqualizeRAF = requestAnimationFrame(()=>{
+    _segEqualizeRAF = null;
+    const containers = document.querySelectorAll('.seg-btns');
+    if(!containers.length) return;
+    let max = 0;
+    containers.forEach(c => { c.style.minHeight = ''; max = Math.max(max, c.offsetHeight); });
+    containers.forEach(c => { c.style.minHeight = max + 'px'; });
+  });
+}
+window.addEventListener('resize', () => equalizeSegHeights());
 
 function renderSeekMarkers(id){
   const p=panels[id]; if(!p)return;
