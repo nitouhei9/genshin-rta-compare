@@ -1,0 +1,1980 @@
+﻿<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>原神 RTA 比較プレイヤー</title>
+  <script src="https://cdn.jsdelivr.net/npm/mp4box@0.5.2/dist/mp4box.all.min.js"></script>
+  <style>
+    :root {
+      --bg:      #07090f;
+      --sf:      #0d1120;
+      --sf2:     #131929;
+      --sf3:     #1a2235;
+      --bd:      #243050;
+      --bd2:     #1d2a40;
+      --gold:    #c8a050;
+      --blue:    #5eadd6;
+      --green:   #5ec898;
+      --red:     #e05555;
+      --text:    #d8e0f0;
+      --mu:      #5a6a88;
+      --mu2:     #3a4a68;
+      --inp:     #080c16;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: 'Segoe UI', 'Hiragino Sans', sans-serif;
+      height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+    }
+
+    /* ── Header ── */
+    #hdr {
+      flex-shrink: 0;
+      background: linear-gradient(180deg,#060810,var(--sf));
+      border-bottom: 1px solid var(--bd);
+      padding: 7px 14px;
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    }
+    .title-b {
+      display: flex; align-items: center; gap: 8px; margin-right: 6px;
+    }
+    .title-ico {
+      width: 30px; height: 30px;
+      background: linear-gradient(135deg,var(--gold),#8a5e10);
+      border-radius: 6px; display: flex; align-items: center;
+      justify-content: center; font-size: 1rem; flex-shrink: 0;
+      box-shadow: 0 2px 10px rgba(200,160,80,.4);
+    }
+    .title-b h1 { font-size: .9rem; font-weight: 700; color: var(--gold); letter-spacing: .06em; }
+    .title-b .sub { font-size: .6rem; color: var(--mu); letter-spacing: .08em; text-transform: uppercase; }
+    .sep { width: 1px; height: 24px; background: var(--bd); margin: 0 2px; }
+
+    .mbtn {
+      display: flex; align-items: center; gap: 4px;
+      padding: 5px 10px; border: 1px solid var(--bd); border-radius: 6px;
+      background: var(--sf3); color: var(--mu);
+      font-size: .76rem; font-weight: 600; cursor: pointer;
+      white-space: nowrap; transition: all .13s; user-select: none;
+    }
+    .mbtn:hover { border-color: var(--gold); color: var(--gold); background: rgba(200,160,80,.07); }
+    .mbtn.g  { border-color: rgba(94,200,152,.4); color: var(--green); }
+    .mbtn.g:hover { background: rgba(94,200,152,.1); }
+    .mbtn.b  { border-color: rgba(94,173,214,.4); color: var(--blue); }
+    .mbtn.b:hover { background: rgba(94,173,214,.1); }
+    .mbtn.a  { border-color: rgba(200,160,80,.4); color: var(--gold); }
+    .mbtn.a:hover { background: rgba(200,160,80,.1); }
+    .mbtn.r  { border-color: rgba(224,85,85,.4); color: var(--red); }
+    .mbtn.r:hover { background: rgba(224,85,85,.1); }
+
+    .add-g { margin-left: auto; display: flex; gap: 6px; }
+    .add-btn {
+      display: flex; align-items: center; gap: 4px;
+      padding: 5px 10px; border: 1px dashed var(--bd2);
+      border-radius: 6px; background: transparent;
+      color: var(--mu); font-size: .76rem; cursor: pointer; transition: all .13s;
+    }
+    .add-btn:hover { border-color: var(--gold); color: var(--gold); }
+    .kbd { font-size: .58rem; color: var(--mu2); border: 1px solid var(--bd2); border-radius: 3px; padding: 1px 4px; }
+
+    /* ── Grid ── */
+    #pw { flex: 1; overflow-y: auto; overflow-x: hidden; }
+    #pg {
+      display: grid; grid-template-columns: 1fr;
+      min-height: 100%; gap: 2px; background: #040609;
+    }
+
+    /* ── Panel ── */
+    .panel { background: var(--sf); display: flex; flex-direction: column; min-height: 0; }
+
+    .p-head {
+      flex-shrink: 0; display: flex; align-items: center; gap: 6px;
+      padding: 5px 10px; background: var(--sf2);
+      border-bottom: 1px solid var(--bd2);
+    }
+    .p-badge { font-size: .58rem; font-weight: 700; padding: 2px 6px; border-radius: 3px; text-transform: uppercase; letter-spacing: .05em; flex-shrink: 0; }
+    .p-badge.yt  { background: rgba(255,50,50,.13); color: #f06060; border: 1px solid rgba(255,50,50,.2); }
+    .p-badge.loc { background: rgba(94,173,214,.13); color: var(--blue); border: 1px solid rgba(94,173,214,.2); }
+    .p-lbl { flex:1; background:transparent; border:none; color:var(--text); font-size:.8rem; font-weight:600; outline:none; cursor:text; min-width:0; }
+    .p-lbl::placeholder { color:var(--mu); }
+    .p-close { width:20px; height:20px; display:flex; align-items:center; justify-content:center; border:1px solid transparent; border-radius:4px; background:transparent; color:var(--mu); cursor:pointer; font-size:.76rem; transition:all .13s; flex-shrink:0; }
+    .p-close:hover { border-color:var(--red); color:var(--red); background:rgba(224,85,85,.1); }
+    .p-del { display:flex; align-items:center; gap:3px; padding:3px 8px; border:1px solid rgba(224,85,85,.35); border-radius:4px; background:transparent; color:var(--red); font-size:.68rem; cursor:pointer; transition:all .13s; flex-shrink:0; }
+    .p-del:hover { background:rgba(224,85,85,.15); border-color:var(--red); }
+
+    /* ── Video area ── */
+    .va { flex:1; position:relative; background:#000; min-height:140px; }
+    .va iframe, .va video { position:absolute; inset:0; width:100%; height:100%; display:block; }
+    .va audio { display:none; }
+
+    .setup-p { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:24px; }
+    .setup-ico { font-size:1.8rem; opacity:.4; }
+    .setup-hint { color:var(--mu); font-size:.78rem; text-align:center; line-height:1.6; }
+    .setup-row  { display:flex; gap:8px; width:100%; max-width:370px; }
+    .setup-inp { flex:1; padding:7px 12px; background:var(--inp); border:1px solid var(--bd); border-radius:7px; color:var(--text); font-size:.8rem; outline:none; transition:border-color .13s; }
+    .setup-inp:focus { border-color:var(--gold); }
+    .setup-inp::placeholder { color:var(--mu2); }
+    .setup-go { padding:7px 14px; background:var(--gold); color:#080c14; border:none; border-radius:7px; font-size:.8rem; font-weight:700; cursor:pointer; flex-shrink:0; }
+    .setup-go:hover { opacity:.85; }
+    .file-lbl { display:flex; align-items:center; gap:7px; padding:8px 16px; background:var(--sf3); border:1px dashed var(--bd); border-radius:7px; color:var(--mu); font-size:.78rem; cursor:pointer; transition:all .13s; }
+    .file-lbl:hover { border-color:var(--blue); color:var(--blue); }
+    .audio-ph { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; background:#040710; color:var(--mu); }
+    .audio-ph .big { font-size:2.2rem; }
+    .audio-ph .fn  { font-size:.76rem; max-width:180px; text-align:center; word-break:break-all; }
+    .load-ov { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; gap:10px; background:rgba(0,0,0,.75); font-size:.8rem; color:var(--mu); }
+    .spin { width:18px; height:18px; border:2px solid var(--bd2); border-top-color:var(--gold); border-radius:50%; animation:spin .7s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    /* ── Controls ── */
+    .p-ctrl { flex-shrink:0; padding:7px 10px; background:var(--sf2); border-top:1px solid var(--bd2); display:flex; flex-direction:column; gap:6px; }
+
+    /* Seek row with marker overlay */
+    .seek-row { display:flex; align-items:center; gap:6px; }
+    .tdisp { font-size:.66rem; font-family:monospace; color:var(--mu); min-width:40px; }
+    .tdisp.r { text-align:right; }
+    .seek-wrap { flex:1; position:relative; height:16px; display:flex; align-items:center; }
+    .seek-wrap input[type="range"] { position:relative; z-index:2; width:100%; margin:0; }
+
+    /* Segment marks on seek bar */
+    .seek-marks { position:absolute; left:0; right:0; top:50%; transform:translateY(-50%); height:20px; pointer-events:none; z-index:1; }
+    .seek-hover { position:absolute; top:-2px; bottom:-2px; width:2px; background:var(--gold); pointer-events:none; z-index:5; display:none; box-shadow:0 0 6px rgba(200,160,80,.7); }
+    .seek-preview {
+      position:absolute; bottom:24px; transform:translateX(-50%);
+      background:var(--sf3); border:1px solid var(--gold); border-radius:5px;
+      padding:3px; pointer-events:none; z-index:30; display:none;
+      box-shadow:0 4px 14px rgba(0,0,0,.6);
+    }
+    .seek-preview canvas { display:block; width:200px; height:112px; background:#000; border-radius:3px; }
+    .seek-preview .pt { font-size:.66rem; text-align:center; color:var(--gold); margin-top:3px; font-family:monospace; font-weight:600; }
+    .seek-preview.no-frame canvas { display:none; }
+    .seek-preview.no-frame { padding:5px 9px; }
+    .sm {
+      position:absolute; top:50%; transform:translate(-50%,-50%);
+      width:3px; height:14px; border-radius:1.5px;
+      background:var(--gold); opacity:.7; transition:background .15s, height .15s;
+    }
+    .sm.cur { background:var(--green); height:18px; opacity:1; }
+
+    input[type="range"] {
+      -webkit-appearance:none; appearance:none;
+      flex:1; height:3px; border-radius:2px;
+      background:var(--bd2); outline:none; cursor:pointer;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance:none; width:11px; height:11px; border-radius:50%;
+      background:var(--gold); cursor:pointer; transition:transform .1s;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover { transform:scale(1.35); }
+    .vol-rng { max-width:68px; }
+    .vol-rng::-webkit-slider-thumb { background:var(--blue); }
+
+    /* Button row */
+    .ctrl-row { display:flex; align-items:center; gap:4px; flex-wrap:nowrap; }
+    .cb {
+      width:28px; height:28px; display:flex; align-items:center; justify-content:center;
+      border:1px solid var(--bd2); border-radius:5px; background:var(--sf3); color:var(--mu);
+      cursor:pointer; font-size:.76rem; transition:all .12s; flex-shrink:0; user-select:none;
+    }
+    .cb:hover { border-color:var(--gold); color:var(--gold); }
+    .cb.g { border-color:rgba(94,200,152,.35); color:var(--green); }
+    .cb.g:hover { background:rgba(94,200,152,.1); }
+    .cb.b-on { background:rgba(94,173,214,.15); border-color:var(--blue); color:var(--blue); }
+    .cb.seg-nav { border-color:rgba(200,160,80,.35); color:var(--gold); font-size:.65rem; }
+    .cb.seg-nav:hover { background:rgba(200,160,80,.1); }
+    .cb.seg-nav:disabled { opacity:.25; cursor:default; border-color:var(--bd2); color:var(--mu2); background:transparent; }
+    .cg { flex:1; }
+    .spd { background:var(--sf3); border:1px solid var(--bd2); border-radius:5px; color:var(--text); font-size:.7rem; padding:3px 4px; cursor:pointer; outline:none; max-width:58px; }
+    .spd:focus { border-color:var(--gold); }
+    .vol-ico { font-size:.78rem; cursor:pointer; flex-shrink:0; }
+
+    /* Offset row */
+    .off-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+    .off-lbl { font-size:.66rem; color:var(--mu); white-space:nowrap; }
+    .off-inp { width:68px; background:var(--inp); border:1px solid var(--bd2); border-radius:5px; color:var(--text); font-size:.7rem; padding:3px 6px; text-align:center; outline:none; }
+    .off-inp:focus { border-color:var(--gold); }
+    .sync-here { font-size:.66rem; padding:3px 8px; background:transparent; border:1px solid rgba(200,160,80,.4); border-radius:5px; color:var(--gold); cursor:pointer; white-space:nowrap; transition:all .12s; }
+    .sync-here:hover { background:rgba(200,160,80,.1); }
+    .off-info { font-size:.63rem; color:var(--gold); margin-left:auto; }
+
+    /* ── Segment Section ── */
+    .seg-sec { flex-shrink:0; border-top:1px solid var(--bd2); background:rgba(0,0,0,.2); }
+
+    /* Scan progress */
+    .scan-prog { display:none; align-items:center; gap:8px; padding:6px 12px; }
+    .scan-prog.show { display:flex; }
+    .scan-bar-w { flex:1; height:4px; background:var(--bd2); border-radius:2px; overflow:hidden; }
+    .scan-bar   { height:100%; background:linear-gradient(90deg,var(--gold),var(--blue)); border-radius:2px; transition:width .3s; width:0%; }
+    .scan-txt   { font-size:.65rem; color:var(--mu); white-space:nowrap; min-width:90px; }
+
+    /* Segment buttons */
+    .seg-btns {
+      display:flex; gap:5px; padding:5px 8px;
+      flex-wrap:wrap; flex-shrink:0;
+    }
+    .seg-btns:empty::before { content:"セグメントなし"; color:var(--mu2); font-size:.65rem; align-self:center; }
+    .seg-btn {
+      display:flex; flex-direction:column; align-items:center;
+      padding:5px 10px; border:1px solid var(--bd2); border-radius:7px;
+      background:var(--sf3); cursor:pointer; transition:all .13s; flex-shrink:0; gap:1px;
+      min-width:56px;
+    }
+    .seg-btn:hover { border-color:var(--gold); transform:translateY(-1px); }
+    .seg-btn.cur {
+      border-color:var(--green);
+      background:rgba(94,200,152,.18);
+      box-shadow: 0 0 0 1px var(--green), 0 0 8px rgba(94,200,152,.45);
+    }
+    @keyframes segPulse {
+      0%,100% { box-shadow: 0 0 0 1px var(--green), 0 0 6px rgba(94,200,152,.35); }
+      50%     { box-shadow: 0 0 0 1px var(--green), 0 0 12px rgba(94,200,152,.7); }
+    }
+    .seg-btn.cur { animation: segPulse 1.6s ease-in-out infinite; }
+    .seg-btn .sn { font-size:.58rem; color:var(--mu); font-weight:700; }
+    .seg-btn .st { font-size:.74rem; font-family:monospace; color:var(--text); font-weight:600; }
+    .seg-btn.cur .sn { color:var(--green); }
+    .seg-btn.cur .st { color:var(--green); }
+    .seg-btns::-webkit-scrollbar { height:3px; }
+    .seg-btns::-webkit-scrollbar-thumb { background:var(--bd); border-radius:2px; }
+
+    /* ── Empty state ── */
+    #empty { display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%; gap:12px; color:var(--mu); text-align:center; padding:40px; }
+    #empty .eico { font-size:3rem; opacity:.3; }
+    #empty h2 { font-size:1rem; color:var(--text); opacity:.6; }
+    #empty p { font-size:.8rem; line-height:1.8; max-width:360px; }
+
+    /* Notification */
+    #notif { position:fixed; bottom:16px; left:50%; transform:translateX(-50%) translateY(60px); background:var(--sf2); border:1px solid var(--gold); border-radius:8px; padding:7px 16px; font-size:.8rem; color:var(--gold); transition:transform .25s ease; z-index:999; pointer-events:none; white-space:nowrap; }
+    #notif.show { transform:translateX(-50%) translateY(0); }
+
+    /* ── Audio detection ── */
+    .aud-wrap {
+      border-top: 1px solid var(--bd2);
+      padding: 5px 8px 6px;
+      background: rgba(0,0,0,.12);
+    }
+    .aud-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+    .aud-lbl { font-size:.62rem; color:var(--mu); white-space:nowrap; }
+    .aud-ref-btn {
+      display:flex; align-items:center; gap:4px;
+      font-size:.62rem; padding:3px 8px;
+      border:1px dashed var(--bd2); border-radius:4px;
+      color:var(--mu); cursor:pointer; white-space:nowrap; transition:all .12s;
+    }
+    .aud-ref-btn:hover { border-color:var(--blue); color:var(--blue); }
+    .aud-ref-name { font-size:.62rem; color:var(--green); max-width:110px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .thr-rng { max-width:64px; }
+    .thr-rng::-webkit-slider-thumb { background:var(--green); }
+    .aud-go {
+      font-size:.62rem; padding:3px 10px;
+      border:1px solid rgba(94,200,152,.4); border-radius:5px;
+      background:transparent; color:var(--green);
+      cursor:pointer; white-space:nowrap; transition:all .12s;
+    }
+    .aud-go:hover:not(:disabled) { background:rgba(94,200,152,.1); }
+    .aud-go:disabled { opacity:.3; cursor:default; }
+    .thr-val { font-size:.62rem; color:var(--green); min-width:2.5ch; text-align:right; }
+
+    /* ── Drag & drop overlay ── */
+    #dragov { position:fixed; inset:0; background:rgba(7,9,15,.85); z-index:9998; display:none; align-items:center; justify-content:center; backdrop-filter:blur(4px); pointer-events:none; }
+    #dragov.show { display:flex; }
+    .dragov-card { padding:40px 60px; border:3px dashed var(--gold); border-radius:14px; color:var(--gold); font-size:1.4rem; font-weight:700; text-align:center; background:rgba(13,17,32,.9); box-shadow:0 0 40px rgba(200,160,80,.3); }
+    .dragov-card .sub { font-size:.85rem; color:var(--mu); font-weight:500; margin-top:8px; }
+
+    /* ── YouTube DL helper modal ── */
+    #ytdlg { position:fixed; inset:0; background:rgba(0,0,0,.75); z-index:9999; display:none; align-items:center; justify-content:center; backdrop-filter:blur(3px); }
+    #ytdlg.show { display:flex; }
+    .ytdlg-card { background:var(--sf); border:1px solid var(--bd); border-radius:12px; padding:24px 28px; min-width:480px; max-width:90vw; box-shadow:0 12px 50px rgba(0,0,0,.7); }
+    .ytdlg-card h3 { color:var(--gold); font-size:1rem; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+    .ytdlg-card .step { display:flex; gap:10px; align-items:flex-start; margin:14px 0; font-size:.78rem; color:var(--text); }
+    .ytdlg-card .stepn { background:var(--gold); color:#080c14; width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:.72rem; flex-shrink:0; }
+    .ytdlg-card .stepd { flex:1; line-height:1.5; }
+    .ytdlg-row { display:flex; gap:8px; margin-top:6px; }
+    .ytdlg-inp { flex:1; padding:8px 12px; background:var(--inp); border:1px solid var(--bd); border-radius:6px; color:var(--text); font-size:.8rem; outline:none; }
+    .ytdlg-inp:focus { border-color:var(--gold); }
+    .ytdlg-go { padding:8px 16px; background:var(--gold); color:#080c14; border:none; border-radius:6px; font-size:.78rem; font-weight:700; cursor:pointer; white-space:nowrap; }
+    .ytdlg-go:hover { opacity:.85; }
+    .ytdlg-close { margin-top:18px; width:100%; padding:7px; background:transparent; border:1px solid var(--bd); color:var(--mu); border-radius:6px; cursor:pointer; font-size:.74rem; }
+    .ytdlg-close:hover { border-color:var(--gold); color:var(--gold); }
+    .ytdlg-cmd { background:var(--inp); border:1px solid var(--bd); border-radius:5px; padding:8px 10px; font-size:.7rem; color:var(--green); font-family:monospace; margin-top:6px; word-break:break-all; white-space:pre-wrap; max-height:80px; overflow-y:auto; }
+
+    /* Scroll */
+    ::-webkit-scrollbar { width:5px; height:5px; }
+    ::-webkit-scrollbar-track { background:var(--bg); }
+    ::-webkit-scrollbar-thumb { background:var(--bd); border-radius:3px; }
+  </style>
+</head>
+<body>
+
+<!-- ═══ Header ═══ -->
+<div id="hdr">
+  <div class="title-b">
+    <div class="title-ico">⚔</div>
+    <div>
+      <h1>原神 RTA 比較プレイヤー</h1>
+      <div class="sub">Genshin Impact — Run Comparison</div>
+    </div>
+  </div>
+
+  <div class="sep"></div>
+  <button class="mbtn g" onclick="masterPlay()"      title="全動画再生 [Space]">▶ 全体再生 <span class="kbd">Space</span></button>
+  <button class="mbtn b" onclick="masterPause()"     title="全動画停止 [Shift+Space]">⏸ 全体停止</button>
+  <div class="sep"></div>
+  <button class="mbtn a" onclick="masterSyncPlay()"  title="オフセット同期再生 [S]">⟳ 同期再生 <span class="kbd">S</span></button>
+  <button class="mbtn"   onclick="masterReset()"     title="全動画リセット [R]">↩ リセット <span class="kbd">R</span></button>
+  <div class="sep"></div>
+  <button class="mbtn r" onclick="masterMuteAll()">🔇 全ミュート</button>
+  <button class="mbtn"   onclick="masterUnmuteAll()">🔊 全解除</button>
+
+  <div class="add-g">
+    <button class="add-btn" onclick="addPanel('youtube')">▷ YouTube追加</button>
+    <button class="add-btn" onclick="addPanel('local')">📁 動画ファイル追加</button>
+    <span style="font-size:.62rem;color:var(--mu2);margin-left:4px;align-self:center">D&D可</span>
+  </div>
+</div>
+
+<!-- ═══ Panels ═══ -->
+<div id="pw">
+  <div id="pg">
+    <div id="empty">
+      <div class="eico">⚔️</div>
+      <h2>比較したいRTA動画を追加してください</h2>
+      <p>ローカル動画を読み込むと自動でロード画面を検出し<br>セグメントに分割します。シークバーにマーカーが表示され<br>クリックで各セグメントへ瞬時に移動できます。</p>
+    </div>
+  </div>
+</div>
+
+<div id="notif"></div>
+
+<script>
+/* ═══ YouTube IFrame API ═══ */
+let _ytReady = false; let _ytFailed = false; const _ytQ = [];
+window.onYouTubeIframeAPIReady = () => { _ytReady=true; _ytQ.forEach(f=>f()); _ytQ.length=0; };
+const _s=document.createElement('script');
+_s.src='https://www.youtube.com/iframe_api';
+_s.onerror = () => { _ytFailed=true; console.error('YouTube IFrame API のロード失敗 (広告ブロッカー / ネットワーク?)'); };
+document.head.appendChild(_s);
+// Hard timeout fallback in case onload fires but onYouTubeIframeAPIReady never does
+setTimeout(()=>{ if(!_ytReady) _ytFailed = true; }, 10000);
+function onYtReady(fn){
+  if(_ytReady){ fn(); return; }
+  _ytQ.push(fn);
+  // Periodically check if loading failed and fail callbacks gracefully
+  const start = Date.now();
+  const chk = setInterval(()=>{
+    if(_ytReady || Date.now() - start > 10000){
+      clearInterval(chk);
+      if(!_ytReady && _ytQ.includes(fn)){
+        _ytQ.splice(_ytQ.indexOf(fn),1);
+        notif('❌ YouTube API のロード失敗 — 広告ブロッカーやネットワーク設定を確認してください');
+      }
+    }
+  }, 500);
+}
+
+/* ═══ State ═══ */
+let _pid=0;
+const panels={};
+const timers={};
+
+/* ═══ Helpers ═══ */
+const $=id=>document.getElementById(id);
+function fmt(sec){
+  if(!isFinite(sec)||sec<0)sec=0;
+  const h=Math.floor(sec/3600), m=Math.floor((sec%3600)/60), s=Math.floor(sec%60);
+  return h>0?`${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`:`${m}:${String(s).padStart(2,'0')}`;
+}
+function fmtShort(sec){ // e.g. "1:23" or "45.2s"
+  if(sec<60) return sec.toFixed(1)+'s';
+  return fmt(sec);
+}
+function ytId(url){
+  url=url.trim();
+  const rs=[/(?:v=|youtu\.be\/|embed\/|live\/|shorts\/)([A-Za-z0-9_\-]{11})/,/^([A-Za-z0-9_\-]{11})$/];
+  for(const r of rs){ const m=url.match(r); if(m)return m[1]; }
+  return null;
+}
+function notif(msg){
+  const el=$('notif');
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),2800);
+}
+function updateGrid(){
+  const n=Object.keys(panels).length;
+  const cols=n<=1?1:n===3?3:Math.min(n,2);
+  $('pg').style.gridTemplateColumns=`repeat(${cols},1fr)`;
+  $('empty').style.display=n===0?'flex':'none';
+}
+
+/* ═══ Player Abstraction ═══ */
+const isYt =id=>panels[id]?.type==='youtube';
+const getP =id=>panels[id]?.player;
+function pPlay(id)    { const p=getP(id);if(!p)return;isYt(id)?p.playVideo():p.play().catch(()=>{}); }
+function pPause(id)   { const p=getP(id);if(!p)return;isYt(id)?p.pauseVideo():p.pause(); }
+function pSeek(id,t)  { const p=getP(id);if(!p)return;t=Math.max(0,t);isYt(id)?p.seekTo(t,true):(p.currentTime=t); }
+function pTime(id)    { const p=getP(id);if(!p)return 0;return isYt(id)?p.getCurrentTime():p.currentTime||0; }
+function pDur(id)     { const p=getP(id);if(!p)return 0;return isYt(id)?p.getDuration():p.duration||0; }
+function pVol(id,v)   { const p=getP(id);if(!p)return;panels[id].vol=v;isYt(id)?(p.setVolume(v*100),v>0?p.unMute():p.mute()):(p.volume=v); }
+function pMute(id,m)  { const p=getP(id);if(!p)return;panels[id].muted=m;isYt(id)?(m?p.mute():p.unMute()):(p.muted=m); }
+function pSpeed(id,r) { const p=getP(id);if(!p)return;isYt(id)?p.setPlaybackRate(r):(p.playbackRate=r); }
+function pPlaying(id) {
+  const p=getP(id);if(!p)return false;
+  if(isYt(id))return typeof YT!=='undefined'&&p.getPlayerState()===YT.PlayerState.PLAYING;
+  return !p.paused&&!p.ended;
+}
+
+/* ═══ Add Panel ═══ */
+function addPanel(type){
+  try {
+    const id='p'+(++_pid), num=_pid;
+    panels[id]={id,type,player:null,offset:0,muted:false,vol:1,ready:false,duration:0,segments:[],curSeg:-1,blobUrl:null};
+    if(typeof WARP_DATA_URL !== 'undefined' && typeof _audRefs !== 'undefined'){
+      _audRefs[id]={ dataUrl: WARP_DATA_URL, name:'warp.mp3' };
+    }
+    const grid=$('pg');
+    const div=document.createElement('div');
+    div.className='panel'; div.id=id;
+    div.innerHTML=buildHTML(id,type,num);
+    grid.appendChild(div);
+    panels[id].el=div;
+    updateGrid();
+    if(type==='youtube')$('yu_'+id)?.focus();
+  } catch(err) {
+    console.error('addPanel failed:', err);
+    notif('❌ パネル追加エラー: ' + (err?.message ?? err));
+  }
+}
+
+function buildHTML(id,type,num){
+  const badge=type==='youtube'?'<span class="p-badge yt">YouTube</span>':'<span class="p-badge loc">LOCAL</span>';
+  const lbl  =type==='youtube'?`走者 ${num} (YouTube)`:`走者 ${num} (ローカル)`;
+  const setup=type==='youtube'?buildYtSetup(id):buildLocSetup(id);
+  return `
+  <div class="p-head">
+    ${badge}
+    <input class="p-lbl" id="lbl_${id}" value="${lbl}" title="クリックで名前変更" onchange="panels['${id}'].label=this.value">
+    <button class="p-del" onclick="removePanel('${id}')" title="このパネルを削除">🗑 削除</button>
+  </div>
+  <div class="va" id="va_${id}">${setup}</div>
+  <div class="p-ctrl" id="ctrl_${id}" style="display:none">
+    <!-- seek bar -->
+    <div class="seek-row">
+      <span class="tdisp" id="ct_${id}">0:00</span>
+      <div class="seek-wrap" id="sw_${id}"
+           onmousedown="onSeekClick('${id}',event)"
+           onmousemove="onSeekHover('${id}',event)"
+           onmouseleave="onSeekLeave('${id}')">
+        <input type="range" id="sk_${id}" min="0" max="100" value="0" step="0.05"
+          oninput="onSeekInput('${id}',this.value)"
+          onchange="onSeekChange('${id}',this.value)" title="シーク">
+        <div class="seek-marks" id="sm_${id}"></div>
+        <div class="seek-hover" id="sh_${id}"></div>
+        <div class="seek-preview" id="spv_${id}">
+          <canvas id="spvc_${id}" width="200" height="112"></canvas>
+          <div class="pt" id="spvt_${id}">0:00</div>
+        </div>
+      </div>
+      <span class="tdisp r" id="dt_${id}">0:00</span>
+    </div>
+    <!-- controls -->
+    <div class="ctrl-row">
+      <button class="cb seg-nav" id="psb_${id}" onclick="prevSeg('${id}')" title="前のセグメント" disabled>⏮S</button>
+      <button class="cb g" id="pb_${id}" onclick="togglePlay('${id}')" title="再生/停止">▶</button>
+      <button class="cb seg-nav" id="nsb_${id}" onclick="nextSeg('${id}')" title="次のセグメント" disabled>S⏭</button>
+      <button class="cb" onclick="relSeek('${id}',-60)" title="-1分" style="font-size:.62rem">⏮1m</button>
+      <button class="cb" onclick="relSeek('${id}',-10)" title="-10秒">⏪10</button>
+      <button class="cb" onclick="relSeek('${id}',-3)"  title="-3秒">⏪3</button>
+      <button class="cb" onclick="relSeek('${id}',3)"   title="+3秒">3⏩</button>
+      <button class="cb" onclick="relSeek('${id}',10)"  title="+10秒">10⏩</button>
+      <button class="cb" onclick="relSeek('${id}',60)"  title="+1分" style="font-size:.62rem">1m⏭</button>
+      <div class="cg"></div>
+      <span class="vol-ico" id="vi_${id}" onclick="toggleMute('${id}')" title="ミュート">🔊</span>
+      <input type="range" class="vol-rng" id="vr_${id}" min="0" max="100" value="100" step="1"
+        oninput="onVolInput('${id}',this.value)" title="音量">
+      <select class="spd" onchange="pSpeed('${id}',parseFloat(this.value))" title="速度">
+        <option value="0.25">0.25×</option><option value="0.5">0.5×</option>
+        <option value="0.75">0.75×</option><option value="1" selected>1×</option>
+        <option value="1.25">1.25×</option><option value="1.5">1.5×</option>
+        <option value="2">2×</option>
+      </select>
+    </div>
+    <!-- offset -->
+    <div class="off-row">
+      <span class="off-lbl">🔗 オフセット:</span>
+      <input type="number" class="off-inp" id="oi_${id}" value="0" step="0.5" onchange="setOffset('${id}',this.value)">
+      <span class="off-lbl">秒</span>
+      <button class="sync-here" onclick="syncHere('${id}')" title="現在位置を同期基準に">📍 ここで同期</button>
+      <span class="off-info" id="oi2_${id}"></span>
+    </div>
+  </div>
+  <!-- ─ Segment section ─ -->
+  <div class="seg-sec" id="segsec_${id}">
+    <div class="scan-prog" id="scanprog_${id}">
+      <div class="scan-bar-w"><div class="scan-bar" id="scanbar_${id}"></div></div>
+      <span class="scan-txt" id="scantxt_${id}">スキャン中… 0%</span>
+    </div>
+    <div class="seg-btns" id="segbtns_${id}"></div>
+    <div class="aud-wrap">
+      <div class="aud-row">
+        <label class="aud-ref-btn">🎵 参照音声
+          <input type="file" accept="audio/*,video/*" style="display:none" onchange="onRefFile('${id}',this)">
+        </label>
+        <span class="aud-ref-name" id="arn_${id}">warp.mp3 (デフォルト)</span>
+        <span style="margin-left:auto" class="aud-lbl">閾値</span>
+        <input type="range" class="thr-rng" id="thr_${id}" min="0.2" max="0.95" value="0.75" step="0.01"
+          oninput="document.getElementById('thrv_${id}').textContent=parseFloat(this.value).toFixed(2)"
+          title="検出閾値 (高いほど厳しく)">
+        <span class="thr-val" id="thrv_${id}">0.75</span>
+        <button class="aud-go" id="audgo_${id}" onclick="startAudioScan('${id}')">🔍 音声スキャン</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function buildYtSetup(id){
+  const isFile = location.protocol === 'file:';
+  const fileWarn = isFile ? `
+    <div style="background:rgba(224,85,85,.1);border:1px solid rgba(224,85,85,.35);border-radius:6px;padding:8px 12px;margin:4px 0;font-size:.7rem;color:var(--red);text-align:left;max-width:420px">
+      ⚠ <strong>file:// では YouTube埋め込みが動作しません</strong><br>
+      <span style="color:var(--mu);font-size:.65rem">HTTPサーバ経由でアクセスしてください<br>例: <code style="color:var(--gold);background:rgba(0,0,0,.3);padding:1px 4px;border-radius:2px">python -m http.server 8000</code> → <code style="color:var(--gold)">http://localhost:8000</code></span>
+    </div>` : '';
+  return `<div class="setup-p" id="sp_${id}">
+    <div class="setup-ico">▶</div>
+    <div class="setup-hint">YouTube URL または動画 ID を入力</div>
+    ${fileWarn}
+    <div class="setup-row">
+      <input class="setup-inp" id="yu_${id}" placeholder="https://youtube.com/watch?v=..." onkeydown="if(event.key==='Enter')loadYt('${id}')">
+      <button class="setup-go" onclick="loadYt('${id}')">読み込み</button>
+    </div>
+  </div>`;
+}
+function buildLocSetup(id){
+  return `<div class="setup-p" id="sp_${id}">
+    <div class="setup-ico">📁</div>
+    <div class="setup-hint">動画ファイルを選択（MP4 / WebM / MOV など）</div>
+    <label class="file-lbl">📂 ファイルを選択<input type="file" accept="video/*,audio/*" style="display:none" onchange="loadLocal('${id}',this)"></label>
+  </div>`;
+}
+
+/* ═══ Load YouTube ═══ */
+/* ═══ YouTube → yt-dlp local download workflow ═══ */
+function genYtCmd(id){
+  const inp = $('yu_'+id);
+  const url = inp?.value?.trim();
+  if(!url){ notif('YouTube URL を入力してください'); inp?.focus(); return; }
+  const vid = ytId(url);
+  const fullUrl = vid ? `https://www.youtube.com/watch?v=${vid}` : url;
+  // Use mp4 best (h264+aac) for max browser compatibility
+  const cmd = `yt-dlp -f "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/b" --merge-output-format mp4 "${fullUrl}"`;
+  const box  = $('ytcmd_'+id);
+  const txt  = $('ytcmdtxt_'+id);
+  if(txt) txt.textContent = cmd;
+  if(box) box.style.display = 'block';
+}
+
+function copyYtCmd(id){
+  const txt = $('ytcmdtxt_'+id);
+  if(!txt) return;
+  navigator.clipboard?.writeText(txt.textContent).then(
+    () => notif('📋 コマンドをコピーしました ✓'),
+    () => {
+      // Fallback: select text for manual copy
+      const r = document.createRange(); r.selectNode(txt);
+      window.getSelection()?.removeAllRanges();
+      window.getSelection()?.addRange(r);
+      notif('テキストを選択しました — Ctrl+C でコピー');
+    }
+  );
+}
+
+function loadYt(id){
+  const inp=$('yu_'+id); const vid=ytId(inp.value);
+  if(!vid){notif('有効なYouTube URLを入力してください');inp.focus();return;}
+  panels[id].ytVideoId = vid;
+  const va=$('va_'+id);
+  va.innerHTML='<div class="load-ov"><div class="spin"></div>読み込み中…</div>';
+  const pd=document.createElement('div'); pd.id='ytd_'+id; va.appendChild(pd);
+  onYtReady(()=>{
+    // host: youtube-nocookie + origin avoids "エラー 153 (動画プレーヤーの設定エラー)"
+    // that occurs when running from file:// or when origin doesn't match.
+    const isFileProto = location.protocol === 'file:';
+    const pl=new YT.Player('ytd_'+id,{
+      videoId:vid,
+      host: 'https://www.youtube-nocookie.com',
+      playerVars:{
+        autoplay:0, controls:0, modestbranding:1, rel:0, enablejsapi:1,
+        playsinline:1, fs:0,
+        ...(isFileProto ? {} : { origin: location.origin }),
+      },
+      events:{
+        onReady:()=>{
+          va.querySelector('.load-ov')?.remove();
+          panels[id].player=pl; panels[id].ready=true; panels[id].duration=pl.getDuration();
+          showCtrl(id); startTick(id);
+          notif('YouTube動画を読み込みました ✓ — 音声スキャン開始');
+          // Auto-trigger audio scan via Piped (same as local files)
+          startAudioScan(id);
+        },
+        onStateChange:e=>{
+          if(typeof YT==='undefined')return;
+          setPlayBtn(id,e.data===YT.PlayerState.PLAYING);
+          if(e.data===YT.PlayerState.PLAYING)panels[id].duration=pl.getDuration();
+        },
+        onError:e=>{
+          const msgs = {
+            2:   '無効な動画ID',
+            5:   'HTML5プレーヤーの問題',
+            100: '動画が見つからない (削除/非公開)',
+            101: '動画所有者が埋め込みを許可していません',
+            150: '動画所有者が埋め込みを許可していません',
+            153: location.protocol === 'file:'
+              ? 'file:// では動作しません — HTTPサーバ経由でアクセスしてください (例: python -m http.server)'
+              : 'プレーヤー設定エラー',
+          };
+          const msg = msgs[e.data] ?? `不明なエラー (${e.data})`;
+          notif(`❌ YouTubeエラー ${e.data}: ${msg}`);
+        }
+      }
+    });
+  });
+}
+
+/* ═══ Load Local File ═══ */
+function loadLocal(id,inp){
+  const file=inp.files[0]; if(!file)return;
+  loadLocalFile(id, file);
+}
+function loadLocalFile(id, file){
+  if(!file || !panels[id]) return;
+  // YouTube panel that downloaded the file → flip to local-style behavior
+  if(panels[id]?.type === 'youtube'){
+    panels[id].type = 'local';
+    if(typeof WARP_DATA_URL !== 'undefined' && typeof _audRefs !== 'undefined'){
+      _audRefs[id] = { dataUrl: WARP_DATA_URL, name: 'warp.mp3' };
+    }
+    // Rebuild header badge to reflect new type
+    const badge = panels[id].el?.querySelector('.p-badge');
+    if(badge){ badge.className = 'p-badge loc'; badge.textContent = 'LOCAL'; }
+    // Add aud-wrap that the YT-mode buildHTML omitted
+    const segSec = $('segsec_'+id);
+    if(segSec && !segSec.querySelector('.aud-wrap')){
+      const w = document.createElement('div');
+      w.innerHTML = `<div class="aud-wrap"><div class="aud-row">
+        <label class="aud-ref-btn">🎵 参照音声<input type="file" accept="audio/*,video/*" style="display:none" onchange="onRefFile('${id}',this)"></label>
+        <span class="aud-ref-name" id="arn_${id}">warp.mp3 (デフォルト)</span>
+        <span style="margin-left:auto" class="aud-lbl">閾値</span>
+        <input type="range" class="thr-rng" id="thr_${id}" min="0.2" max="0.95" value="0.75" step="0.01"
+          oninput="document.getElementById('thrv_${id}').textContent=parseFloat(this.value).toFixed(2)" title="検出閾値">
+        <span class="thr-val" id="thrv_${id}">0.75</span>
+        <button class="aud-go" id="audgo_${id}" onclick="startAudioScan('${id}')">🔍 音声スキャン</button>
+      </div></div>`;
+      segSec.appendChild(w.firstElementChild);
+    }
+  }
+  const url=URL.createObjectURL(file);
+  panels[id].blobUrl=url; panels[id].file=file;
+  const isAudio=file.type.startsWith('audio/');
+  const va=$('va_'+id); va.innerHTML='';
+
+  const lblEl=$('lbl_'+id);
+  if(lblEl&&lblEl.value.startsWith('走者')){ lblEl.value=file.name.replace(/\.[^.]+$/,''); panels[id].label=lblEl.value; }
+
+  if(isAudio){
+    const ph=document.createElement('div'); ph.className='audio-ph';
+    ph.innerHTML=`<div class="big">🎵</div><div class="fn">${file.name}</div>`;
+    va.appendChild(ph);
+    const audio=document.createElement('audio'); audio.src=url;
+    audio.addEventListener('loadedmetadata',()=>onMediaReady(id,audio,file.name,false));
+    audio.addEventListener('play',()=>setPlayBtn(id,true));
+    audio.addEventListener('pause',()=>setPlayBtn(id,false));
+    audio.addEventListener('ended',()=>setPlayBtn(id,false));
+    va.appendChild(audio);
+  } else {
+    const video=document.createElement('video'); video.src=url;
+    video.addEventListener('loadedmetadata',()=>onMediaReady(id,video,file.name,true));
+    video.addEventListener('play',()=>setPlayBtn(id,true));
+    video.addEventListener('pause',()=>setPlayBtn(id,false));
+    video.addEventListener('ended',()=>setPlayBtn(id,false));
+    va.appendChild(video);
+  }
+}
+
+function onMediaReady(id,el,name,scannable){
+  panels[id].player=el; panels[id].ready=true; panels[id].duration=el.duration;
+  showCtrl(id); startTick(id);
+  notif(`ファイルを読み込みました: ${name} ✓`);
+  if(scannable) startAudioScan(id); // kick off background audio scan
+}
+
+/* ═══ UI helpers ═══ */
+function showCtrl(id){ const c=$('ctrl_'+id); if(c)c.style.display='flex'; }
+function setPlayBtn(id,playing){
+  const b=$('pb_'+id); if(!b)return;
+  b.textContent=playing?'⏸':'▶'; b.title=playing?'一時停止':'再生';
+  b.className=playing?'cb b-on':'cb g';
+}
+
+/* ═══ Tick ═══ */
+const _tn={};
+function startTick(id){ if(timers[id])clearInterval(timers[id]); timers[id]=setInterval(()=>tick(id),200); }
+function tick(id){
+  if(!panels[id]?.ready)return;
+  const t=pTime(id), dur=pDur(id)||panels[id].duration||0;
+  if(dur>panels[id].duration)panels[id].duration=dur;
+
+  const ct=$('ct_'+id); if(ct)ct.textContent=fmt(t);
+  const dt=$('dt_'+id); if(dt)dt.textContent=fmt(panels[id].duration);
+
+  const sk=$('sk_'+id);
+  if(sk&&panels[id].duration>0){
+    const pct=(t/panels[id].duration)*100;
+    sk.value=pct;
+    sk.style.background=`linear-gradient(to right,var(--gold) ${pct}%,var(--bd2) ${pct}%)`;
+  }
+
+  // Update active segment highlight every tick (real-time response)
+  updateCurSeg(id, t);
+}
+
+/* ═══ Seek ═══ */
+const _seekRAF = {};      // id → pending requestAnimationFrame id
+const _seekLastYt = {};   // id → last YouTube seek timestamp (ms)
+
+function onSeekInput(id,val){
+  const dur=panels[id]?.duration||0;
+  if(!dur) return;
+  const t=(val/100)*dur;
+  const ct=$('ct_'+id); if(ct) ct.textContent=fmt(t);
+  const sk=$('sk_'+id); if(sk) sk.style.background=`linear-gradient(to right,var(--gold) ${val}%,var(--bd2) ${val}%)`;
+  // Live segment highlight while dragging
+  updateCurSeg(id, t);
+
+  // Live preview seek — scrub the video so the frame at `t` is shown immediately.
+  // Local videos: set currentTime on RAF tick (cheap, instant frame preview).
+  // YouTube: throttle to ~10fps to avoid overwhelming the IFrame API.
+  if(isYt(id)){
+    const now = performance.now();
+    if(now - (_seekLastYt[id]||0) > 100){
+      _seekLastYt[id] = now;
+      pSeek(id, t);
+    }
+  } else {
+    if(_seekRAF[id]) cancelAnimationFrame(_seekRAF[id]);
+    _seekRAF[id] = requestAnimationFrame(()=>{
+      _seekRAF[id] = null;
+      pSeek(id, t);
+    });
+  }
+}
+function onSeekChange(id,val){
+  const dur=panels[id]?.duration||0;
+  if(!dur) return;
+  if(_seekRAF[id]){ cancelAnimationFrame(_seekRAF[id]); _seekRAF[id] = null; }
+  // Always commit the final position on release/click
+  pSeek(id, (val/100)*dur);
+}
+
+// One-click seek: <input type=range> sometimes only nudges the thumb without
+// firing input on the first click in some browsers. This computes the click
+// position directly and seeks immediately, guaranteeing instant response.
+function onSeekClick(id, e){
+  if(e.button !== 0) return;
+  const sw = $('sw_'+id); if(!sw) return;
+  const dur = panels[id]?.duration || 0; if(!dur) return;
+  const r = sw.getBoundingClientRect();
+  const pct = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width));
+  const t = pct * dur;
+  const sk = $('sk_'+id);
+  if(sk){
+    sk.value = pct * 100;
+    sk.style.background = `linear-gradient(to right,var(--gold) ${pct*100}%,var(--bd2) ${pct*100}%)`;
+  }
+  const ct = $('ct_'+id); if(ct) ct.textContent = fmt(t);
+  updateCurSeg(id, t);
+  pSeek(id, t);
+}
+
+// Seek-bar hover: shows a thumbnail (local) or just the timestamp (YouTube).
+function onSeekHover(id, e){
+  const p = panels[id]; if(!p) return;
+  const dur = p.duration || 0; if(!dur) return;
+  const sw = $('sw_'+id), sh = $('sh_'+id), spv = $('spv_'+id), spvt = $('spvt_'+id);
+  if(!sw || !sh || !spv) return;
+
+  const r = sw.getBoundingClientRect();
+  const x = Math.max(0, Math.min(r.width, e.clientX - r.left));
+  const t = (x / r.width) * dur;
+
+  sh.style.left    = x + 'px';
+  sh.style.display = 'block';
+
+  // Clamp tooltip horizontally inside the seek-wrap
+  const previewW = 210;
+  const half     = previewW/2;
+  const left     = Math.max(half, Math.min(r.width - half, x));
+  spv.style.left    = left + 'px';
+  spv.style.display = 'block';
+  if(spvt) spvt.textContent = fmt(t);
+
+  if(p.type === 'local' && p.blobUrl){
+    spv.classList.remove('no-frame');
+    drawSeekPreview(id, t);
+  } else {
+    spv.classList.add('no-frame');
+  }
+}
+
+function onSeekLeave(id){
+  const sh  = $('sh_'+id), spv = $('spv_'+id);
+  if(sh)  sh.style.display  = 'none';
+  if(spv) spv.style.display = 'none';
+}
+
+// Hidden video used solely for seek-bar thumbnails.
+// Independent from panel.player so it doesn't disturb playback.
+const _previewState = {}; // id → { video, busy, pendingT }
+function drawSeekPreview(id, t){
+  const p = panels[id]; if(!p?.blobUrl) return;
+  let st = _previewState[id];
+  if(!st){
+    const v = document.createElement('video');
+    v.src = p.blobUrl;
+    v.muted = true;
+    v.preload = 'auto';
+    v.style.cssText = 'position:fixed;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none';
+    document.body.appendChild(v);
+    st = _previewState[id] = { video: v, busy: false, pendingT: null };
+    v.addEventListener('seeked', ()=>{
+      const cnv = $('spvc_'+id);
+      if(cnv){
+        const ctx = cnv.getContext('2d');
+        try { ctx.drawImage(v, 0, 0, cnv.width, cnv.height); } catch(e){}
+      }
+      st.busy = false;
+      if(st.pendingT !== null){
+        const next = st.pendingT;
+        st.pendingT = null;
+        st.busy = true;
+        try { v.currentTime = next; } catch(e){ st.busy = false; }
+      }
+    });
+  }
+  if(st.busy){ st.pendingT = t; return; }
+  st.busy = true;
+  try { st.video.currentTime = t; } catch(e){ st.busy = false; }
+}
+function relSeek(id,d){ pSeek(id,pTime(id)+d); }
+function togglePlay(id){ if(!panels[id]?.ready)return; pPlaying(id)?pPause(id):pPlay(id); }
+
+/* ═══ Volume / Mute ═══ */
+function onVolInput(id,val){
+  const v=val/100; pVol(id,v); panels[id].vol=v;
+  const vi=$('vi_'+id); if(vi)vi.textContent=v===0?'🔇':v<0.5?'🔉':'🔊';
+  const vr=$('vr_'+id); if(vr)vr.style.background=`linear-gradient(to right,var(--blue) ${val}%,var(--bd2) ${val}%)`;
+  if(v>0&&panels[id].muted){panels[id].muted=false;pMute(id,false);}
+}
+function toggleMute(id){
+  const p=panels[id];if(!p)return;
+  p.muted=!p.muted; pMute(id,p.muted);
+  const vi=$('vi_'+id); if(vi)vi.textContent=p.muted?'🔇':p.vol<0.5?'🔉':'🔊';
+}
+
+/* ═══ Offset ═══ */
+function setOffset(id,val){
+  panels[id].offset=parseFloat(val)||0;
+  const el=$('oi2_'+id);
+  if(el)el.textContent=panels[id].offset!==0?`(${panels[id].offset>0?'+':''}${panels[id].offset}s)`:'';
+}
+function syncHere(id){
+  const t=pTime(id); panels[id].offset=t;
+  const oi=$('oi_'+id); if(oi)oi.value=t.toFixed(2);
+  const el=$('oi2_'+id); if(el)el.textContent=`📌 ${fmt(t)}`;
+  notif(`📍 ${$('lbl_'+id)?.value||id}: ${fmt(t)} を同期基準に設定`);
+}
+
+/* ═══ Remove Panel ═══ */
+function removePanel(id){
+  if(!panels[id])return;
+  if(panels[id].ready)pPause(id);
+  if(panels[id].blobUrl)URL.revokeObjectURL(panels[id].blobUrl);
+  if(panels[id]._scanAbort)panels[id]._scanAbort=true;
+  clearInterval(timers[id]); delete timers[id];
+  if(_previewState[id]){
+    try { _previewState[id].video.pause(); _previewState[id].video.removeAttribute('src'); _previewState[id].video.remove(); } catch(e){}
+    delete _previewState[id];
+  }
+  delete _audRefs[id];
+  $('pg').querySelector('#'+id)?.remove();
+  delete panels[id];
+  updateGrid();
+  notif('パネルを削除しました');
+}
+
+/* ═══ Segment Navigation ═══ */
+function gotoSeg(id, idx){
+  const segs=panels[id]?.segments; if(!segs||!segs[idx])return;
+  pSeek(id, segs[idx].start);
+  updateCurSeg(id, segs[idx].start);
+}
+
+function prevSeg(id){
+  const p=panels[id]; if(!p?.segments?.length)return;
+  const t=pTime(id);
+  // Find the segment whose start is just before current time
+  let target=-1;
+  for(let i=p.segments.length-1;i>=0;i--){
+    if(p.segments[i].start < t-0.5){ target=i; break; }
+  }
+  if(target>=0){ gotoSeg(id,target); notif(`⏮ Seg ${target+1}`); }
+}
+
+function nextSeg(id){
+  const p=panels[id]; if(!p?.segments?.length)return;
+  const t=pTime(id);
+  let target=-1;
+  for(let i=0;i<p.segments.length;i++){
+    if(p.segments[i].start > t+0.5){ target=i; break; }
+  }
+  if(target>=0){ gotoSeg(id,target); notif(`⏭ Seg ${target+1}`); }
+}
+
+function updateCurSeg(id, t){
+  const p=panels[id]; if(!p?.segments?.length)return;
+  let cur=-1;
+  for(let i=p.segments.length-1;i>=0;i--){
+    if(t>=p.segments[i].start){ cur=i; break; }
+  }
+  if(cur===p.curSeg)return;
+  p.curSeg=cur;
+
+  // Update button highlights + auto-scroll active button into view
+  const btns=$('segbtns_'+id)?.querySelectorAll('.seg-btn');
+  btns?.forEach((b,i)=>{
+    const on = i===cur;
+    b.classList.toggle('cur', on);
+    if(on) b.scrollIntoView({ behavior:'smooth', inline:'center', block:'nearest' });
+  });
+
+  // Update seek bar markers
+  const marks=$('sm_'+id)?.querySelectorAll('.sm');
+  marks?.forEach((m,i)=>m.classList.toggle('cur',i===cur));
+
+  // Update prev/next buttons
+  const psb=$('psb_'+id), nsb=$('nsb_'+id);
+  if(psb)psb.disabled=cur<=0&&(cur===0);
+  if(nsb)nsb.disabled=cur>=p.segments.length-1;
+}
+
+/* ═══ Segment Scan ═══ */
+
+// ──────────────────────────────────────────────────────────────
+//  Seek helper
+// ──────────────────────────────────────────────────────────────
+function seekVideo(video, time){
+  return new Promise(resolve=>{
+    let done=false;
+    const finish=()=>{ if(done)return; done=true; resolve(); };
+    video.addEventListener('seeked', finish, {once:true});
+    video.currentTime=time;
+    setTimeout(finish, 700); // fallback if seeked never fires
+  });
+}
+
+// ──────────────────────────────────────────────────────────────
+//  Frame analysis
+//
+//  原神ロード画面の特徴:
+//    夜パターン: 背景ほぼ真っ黒 (#1b1c25)  → 暗ピクセル割合 >= 55%
+//    昼パターン: 背景ほぼ真っ白 (#f0f0f0)  → 明ピクセル割合 >= 55%
+//
+//  単純な平均輝度ではなく「割合」で判定することで
+//  中央の木アイコンやテキストによる誤判定を防ぐ
+// ──────────────────────────────────────────────────────────────
+function detectLoadFrame(ctx, w, h){
+  try {
+    const px = ctx.getImageData(0, 0, w, h).data;
+    const n  = w * h;
+    let dark=0, bright=0;
+    for(let i=0; i<px.length; i+=4){
+      // 輝度 (BT.601)
+      const lum = 0.299*px[i] + 0.587*px[i+1] + 0.114*px[i+2];
+      if(lum < 45)  dark++;    // 夜ロード背景: 輝度 ~27
+      if(lum > 210) bright++;  // 昼ロード背景: 輝度 ~240
+    }
+    const dPct = dark   / n;
+    const bPct = bright / n;
+    // 55%以上が極端に暗い or 明るい → ロード画面と判定
+    return { isLoad: dPct >= 0.55 || bPct >= 0.55, dPct, bPct };
+  } catch(e) {
+    return { isLoad: false, dPct: 0, bPct: 0 };
+  }
+}
+
+// ──────────────────────────────────────────────────────────────
+//  Background scan (video load 完了後に自動実行)
+// ──────────────────────────────────────────────────────────────
+async function scanSegments(id){
+  const panel = panels[id];
+  if(!panel?.blobUrl) return;
+
+  const duration = panel.duration;
+  if(!duration || duration <= 0) return;
+
+  // UI: スキャン開始
+  const prog   = $('scanprog_'+id);
+  const barEl  = $('scanbar_'+id);
+  const txtEl  = $('scantxt_'+id);
+  const segBtns= $('segbtns_'+id);
+  if(prog)    prog.classList.add('show');
+  if(segBtns) segBtns.innerHTML = '';
+
+  // サンプリング間隔 (短いほど精度が上がるが時間がかかる)
+  const interval = duration < 120 ? 0.5 : duration < 600 ? 1 : 1.5;
+
+  // スキャン専用のvideoを作成 (メイン再生に影響しない)
+  const sv = document.createElement('video');
+  sv.muted = true;
+  sv.preload = 'auto';
+  sv.src = panel.blobUrl;
+
+  // metadata & seekable を待つ
+  await new Promise(r => {
+    const onReady = () => { sv.removeEventListener('loadedmetadata', onReady); r(); };
+    sv.addEventListener('loadedmetadata', onReady);
+    setTimeout(r, 5000);
+  });
+  // 最初のフレームを読めるまで少し待つ
+  await seekVideo(sv, 0);
+  await new Promise(r => setTimeout(r, 100));
+
+  // キャンバス (64×36 = 2304px: 精度と速度のバランス)
+  const W = 64, H = 36;
+  const canvas = document.createElement('canvas');
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+  const steps  = Math.floor(duration / interval);
+  const frames = []; // [{t, isLoad, dPct, bPct}]
+
+  panel._scanAbort = false;
+
+  for(let i = 0; i <= steps; i++){
+    if(panel._scanAbort) break;
+
+    const t = Math.min(i * interval, duration);
+    await seekVideo(sv, t);
+    ctx.drawImage(sv, 0, 0, W, H);
+    const det = detectLoadFrame(ctx, W, H);
+    frames.push({ t, ...det });
+
+    // プログレス更新 (5ステップごと)
+    if(i % 5 === 0){
+      const pct = Math.round((i / steps) * 100);
+      if(barEl) barEl.style.width = pct + '%';
+      if(txtEl) txtEl.textContent = `スキャン中… ${pct}%`;
+      await new Promise(r => setTimeout(r, 0)); // UIを一瞬解放
+    }
+  }
+
+  sv.src = ''; // スキャンvideoを解放
+
+  if(panel._scanAbort){ if(prog) prog.classList.remove('show'); return; }
+
+  // ── フレーム列からセグメントを抽出 ──────────────────────────
+  //
+  // ノイズ除去: 1フレームだけの孤立したisLoadは隣と合わせる
+  // (短い誤検出をスムージング)
+  //
+  const raw = frames.map(f => f.isLoad);
+  const smoothed = raw.map((cur, i) => {
+    const prev = i > 0           ? raw[i-1] : cur;
+    const next = i < raw.length-1 ? raw[i+1] : cur;
+    // 両隣が違う→スパイク→隣の値に従う
+    return (cur === prev || cur === next) ? cur : prev;
+  });
+
+  // ロード画面が終わった瞬間 (isLoad: true→false) でセグメントを区切る
+  const segments = [];
+  let segStart = null;
+
+  for(let i = 0; i < frames.length; i++){
+    const isLoad   = smoothed[i];
+    const prevLoad = i > 0 ? smoothed[i-1] : isLoad;
+    const t        = frames[i].t;
+
+    // ゲームプレイ開始: ロード終了 or 最初のゲームプレイフレーム
+    if(!isLoad && segStart === null){
+      segStart = t;
+    }
+
+    // ゲームプレイ終了: ゲーム→ロードへ遷移
+    if(isLoad && !prevLoad && segStart !== null){
+      const endT = frames[i-1]?.t ?? t;
+      segments.push({ n: segments.length+1, start: segStart, end: endT, dur: endT - segStart });
+      segStart = null;
+    }
+
+    // ロード終了 → 次のゲームプレイ開始
+    if(!isLoad && prevLoad){
+      segStart = t;
+    }
+  }
+  // 最後のセグメントを閉じる
+  if(segStart !== null){
+    const endT = frames[frames.length-1].t;
+    segments.push({ n: segments.length+1, start: segStart, end: endT, dur: endT - segStart });
+  }
+
+  panel.segments = segments;
+  panel.curSeg   = -1;
+
+  if(prog) prog.classList.remove('show');
+  renderSegmentUI(id);
+
+  const label = $('lbl_'+id)?.value || id;
+  if(segments.length > 0){
+    notif(`✓ ${label}: ${segments.length}個のセグメントを検出`);
+  } else {
+    notif(`⚠ ${label}: セグメントが検出されませんでした`);
+  }
+}
+
+function renderSegmentUI(id){
+  const p=panels[id]; if(!p)return;
+  const segs=p.segments;
+
+  // ── Segment buttons ──
+  const btns=$('segbtns_'+id);
+  if(btns){
+    btns.innerHTML='';
+    segs.forEach((s,i)=>{
+      const b=document.createElement('button');
+      b.className='seg-btn';
+      b.title=`Seg ${s.n}: ${fmt(s.start)} → ${fmt(s.end)}`;
+      b.innerHTML=`<div class="sn">${s.n}</div><div class="st">${fmtShort(s.dur)}</div>`;
+      b.onclick=()=>gotoSeg(id,i);
+      btns.appendChild(b);
+    });
+  }
+
+  // ── Seek bar markers ──
+  renderSeekMarkers(id);
+
+  // ── Enable prev/next buttons ──
+  const psb=$('psb_'+id), nsb=$('nsb_'+id);
+  if(psb)psb.disabled=segs.length===0;
+  if(nsb)nsb.disabled=segs.length===0;
+}
+
+function renderSeekMarkers(id){
+  const p=panels[id]; if(!p)return;
+  const dur=p.duration; if(!dur)return;
+  const container=$('sm_'+id); if(!container)return;
+
+  container.innerHTML='';
+  p.segments.forEach((s,i)=>{
+    const pct=(s.start/dur)*100;
+    const m=document.createElement('div');
+    m.className='sm';
+    m.style.left=pct+'%';
+    m.title=`Seg ${s.n}: ${fmt(s.start)}`;
+    m.style.cursor='pointer';
+    m.style.pointerEvents='auto';
+    m.onclick=(e)=>{ e.stopPropagation(); gotoSeg(id,i); };
+    container.appendChild(m);
+  });
+}
+
+/* ═══ Master Controls ═══ */
+function readyIds(){ return Object.keys(panels).filter(id=>panels[id].ready); }
+
+function masterPlay(){ readyIds().forEach(id=>pPlay(id)); }
+function masterPause(){ readyIds().forEach(id=>pPause(id)); }
+
+function masterSyncPlay(refId=null){
+  const ids=readyIds(); if(!ids.length)return;
+  const ref=(refId&&panels[refId]?.ready)?refId:ids[0];
+  const refT=pTime(ref), refOff=panels[ref].offset;
+  ids.forEach(id=>{ const tgt=refT-refOff+panels[id].offset; pSeek(id,tgt); });
+  setTimeout(()=>ids.forEach(id=>pPlay(id)),120);
+  notif(`⟳ ${$('lbl_'+ref)?.value||ref} 基準で同期再生`);
+}
+
+function masterReset(){
+  readyIds().forEach(id=>{pPause(id);pSeek(id,panels[id].offset);});
+  notif('↩ 全パネルをリセット');
+}
+function masterMuteAll(){
+  readyIds().forEach(id=>{panels[id].muted=true;pMute(id,true);const vi=$('vi_'+id);if(vi)vi.textContent='🔇';});
+  notif('🔇 全ミュート');
+}
+function masterUnmuteAll(){
+  readyIds().forEach(id=>{panels[id].muted=false;pMute(id,false);const vi=$('vi_'+id);if(vi)vi.textContent=panels[id].vol<0.5?'🔉':'🔊';});
+  notif('🔊 全解除');
+}
+
+/* ═══ Audio Detection ═══ */
+const WARP_B64 = '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';
+const WARP_DATA_URL = 'data:audio/mpeg;base64,' + WARP_B64;
+
+
+const _audRefs = {}; // id -> { file, name }
+
+function onRefFile(id, input){
+  const f = input.files[0]; if(!f) return;
+  _audRefs[id] = { file: f };
+  const arn = document.getElementById('arn_'+id); if(arn) arn.textContent = f.name;
+  const btn = document.getElementById('audgo_'+id); if(btn) btn.disabled = false;
+}
+
+async function startAudioScan(id){
+  const panel = panels[id];
+  if(!panel){ return; }
+  const isYtPanel = panel.type === 'youtube';
+  if(isYtPanel && !panel.ytVideoId){ notif('YouTube動画を読み込んでください'); return; }
+  if(!isYtPanel && !panel.blobUrl){ notif('動画ファイルを読み込んでください'); return; }
+  const ref = _audRefs[id];
+  if(!ref){ notif('参照音声ファイルを選択してください'); return; }
+
+  const btn    = document.getElementById('audgo_'+id);
+  const prog   = document.getElementById('scanprog_'+id);
+  const bar    = document.getElementById('scanbar_'+id);
+  const txt    = document.getElementById('scantxt_'+id);
+  if(btn){ btn.disabled=true; btn.textContent='🔄 処理中…'; }
+  if(prog) prog.classList.add('show');
+
+  try {
+    const SR    = 8000;
+    const FRAME = Math.round(SR * 0.1); // 100ms frames
+
+    const SMALL_THRESHOLD = 100 * 1024 * 1024; // 100MB
+    const fileSize = panel.file?.size ?? 0;
+
+    if(bar) bar.style.width = '5%';
+    let mainSig;
+
+    const reportProg = (label) => (p)=>{
+      if(bar) bar.style.width = `${5 + p*35}%`;
+      if(txt) txt.textContent = `${label}: ${Math.round(p*100)}%`;
+    };
+
+    // YouTube path: fetch audio-only stream via Piped (CORS-enabled YouTube proxy)
+    if(isYtPanel){
+      if(txt) txt.textContent = 'YouTube音声を取得中 (Piped経由)…';
+      const blob = await fetchYouTubeAudio(panel.ytVideoId, (p, msg)=>{
+        if(bar) bar.style.width = `${5 + p*30}%`;
+        if(txt) txt.textContent = msg;
+      });
+      if(txt) txt.textContent = 'YouTube音声をデコード中…';
+      if(bar) bar.style.width = '38%';
+      mainSig = await decodeMonoSignal(blob, SR);
+    }
+
+    // Path A: small files → direct decodeAudioData (fastest for ≲ 100MB)
+    if(!mainSig && fileSize > 0 && fileSize < SMALL_THRESHOLD){
+      if(txt) txt.textContent = 'メイン音声をデコード中…';
+      try {
+        mainSig = await decodeMonoSignal(panel.blobUrl, SR);
+      } catch(e) {
+        console.warn('decodeMonoSignal failed:', e);
+        mainSig = null;
+      }
+    }
+
+    // Path B: WebCodecs + MP4Box demuxing (audio-only, CPU-speed extraction)
+    if(!mainSig && panel.file && window.AudioDecoder){
+      if(txt) txt.textContent = '高速音声抽出 (WebCodecs)…';
+      try {
+        mainSig = await extractAudioFast(panel.file, SR, reportProg('音声抽出'));
+      } catch(e) {
+        console.warn('extractAudioFast failed:', e);
+        if(txt) txt.textContent = `高速抽出失敗 (${e.message ?? e})`;
+        mainSig = null;
+      }
+    }
+
+    // Path C: real-time playback capture (last resort, local only)
+    if(!mainSig && !isYtPanel){
+      const sizeGB = (fileSize/1024/1024/1024).toFixed(2);
+      if(txt) txt.textContent = `再生キャプチャに切替 (${sizeGB}GB)…`;
+      mainSig = await captureAudioViaPlayback(panel.blobUrl, SR, reportProg('再生キャプチャ'));
+    }
+
+    if(!mainSig) throw new Error('音声取得に失敗しました');
+
+    if(txt) txt.textContent = '参照音声をデコード中…';
+    if(bar) bar.style.width = '30%';
+    const refSrc  = ref.file ? URL.createObjectURL(ref.file) : ref.dataUrl;
+    const refSig  = await decodeMonoSignal(refSrc, SR);
+    if(ref.file) URL.revokeObjectURL(refSrc);
+
+    if(txt) txt.textContent = 'マルチバンドエンベロープ計算中…';
+    if(bar) bar.style.width = '50%';
+    const mainEnvs = computeMultiBandRms(mainSig, FRAME, SR);
+    const refEnvs  = computeMultiBandRms(refSig,  FRAME, SR);
+
+    if(txt) txt.textContent = '相関マッチング中 (3バンド)…';
+    if(bar) bar.style.width = '70%';
+    const thrVal      = parseFloat(document.getElementById('thr_'+id)?.value ?? '0.75');
+    const minGapFrames = Math.round(3 / 0.1); // 3s minimum gap between matches
+    const times = findMatchPeaksMultiBand(mainEnvs, refEnvs, thrVal, minGapFrames, 0.1);
+
+    if(bar) bar.style.width = '100%';
+    if(txt) txt.textContent = `ワープ音 ${times.length} 件検出`;
+    buildSegmentsFromTimes(id, times, panel.duration);
+    notif(`ワープ音検出完了: ${times.length} 件 ✓`);
+    setTimeout(()=>{ if(prog) prog.classList.remove('show'); }, 1800);
+  } catch(err){
+    console.error('Audio scan error:', err);
+    notif('音声スキャンエラー: ' + err.message);
+    if(txt) txt.textContent = 'エラー';
+  } finally {
+    if(btn){ btn.disabled=false; btn.textContent='🔍 音声スキャン'; }
+  }
+}
+
+// Stream-capture audio by playing the video at high speed through Web Audio.
+// Avoids loading the whole file into an ArrayBuffer (works for 10GB+ files).
+// Returns a Float32Array representing the original audio at `targetSR` (effective).
+// Fast audio-only extraction using MP4Box.js (demux) + WebCodecs.AudioDecoder.
+// Reads the file in chunks via Blob.slice, parses the MP4 container, extracts
+// audio packets, and decodes them at CPU speed (no real-time playback).
+// 10GB file completes in minutes, not hours.
+async function extractAudioFast(file, targetSR, onProgress){
+  if(!window.AudioDecoder)  throw new Error('WebCodecs非対応');
+  if(!window.MP4Box)        throw new Error('MP4Box.jsロード失敗 (オフライン?)');
+
+  return new Promise((resolve, reject) => {
+    const mp4 = MP4Box.createFile();
+    let resolved = false;
+    let nativeSR = 0, totalDur = 0;
+    let decoder = null;
+    let chunks = [];
+    let lastTs = 0;
+    let inputDone = false;
+    let pendingDecodes = 0;
+
+    const fail = (e) => { if(!resolved){ resolved = true; reject(e instanceof Error ? e : new Error(String(e))); }};
+    const finalize = () => {
+      if(resolved) return;
+      resolved = true;
+      let total = 0;
+      for(const c of chunks) total += c.length;
+      const cat = new Float32Array(total);
+      let off = 0;
+      for(const c of chunks){ cat.set(c, off); off += c.length; }
+      // Resample nativeSR → targetSR
+      if(Math.abs(nativeSR - targetSR) < 1){ resolve(cat); return; }
+      const ratio  = nativeSR / targetSR;
+      const outLen = Math.floor(cat.length / ratio);
+      const out    = new Float32Array(outLen);
+      for(let i=0; i<outLen; i++){
+        const s = i * ratio;
+        const lo = Math.floor(s), hi = Math.min(lo+1, cat.length-1);
+        const t  = s - lo;
+        out[i] = cat[lo]*(1-t) + cat[hi]*t;
+      }
+      resolve(out);
+    };
+    const maybeFinalize = () => {
+      if(inputDone && pendingDecodes === 0) finalize();
+    };
+
+    mp4.onError = (e) => fail(new Error('MP4解析エラー: ' + e));
+
+    mp4.onReady = (info) => {
+      const tr = info.tracks.find(t => t.type === 'audio');
+      if(!tr) return fail(new Error('音声トラックが見つかりません'));
+      nativeSR  = tr.audio.sample_rate;
+      totalDur  = tr.duration / tr.timescale;
+      const nCh = tr.audio.channel_count;
+
+      // Extract codec config (AudioSpecificConfig for AAC)
+      let description = null;
+      try {
+        const trak = mp4.getTrackById(tr.id);
+        const entry = trak.mdia.minf.stbl.stsd.entries[0];
+        if(entry?.esds?.esd?.descs){
+          for(const d of entry.esds.esd.descs){
+            if(d.tag === 4 && d.descs){
+              for(const sub of d.descs){
+                if(sub.tag === 5 && sub.data){ description = sub.data; break; }
+              }
+            }
+            if(description) break;
+          }
+        }
+      } catch(e){ /* some codecs don't need description */ }
+
+      decoder = new AudioDecoder({
+        output: (ad) => {
+          pendingDecodes--;
+          const n   = ad.numberOfFrames;
+          const nC  = ad.numberOfChannels;
+          const out = new Float32Array(n);
+          try {
+            const buf = new Float32Array(n);
+            for(let c=0; c<nC; c++){
+              ad.copyTo(buf, { planeIndex: c, format: 'f32-planar' });
+              for(let i=0; i<n; i++) out[i] += buf[i];
+            }
+            if(nC > 1) for(let i=0; i<n; i++) out[i] /= nC;
+          } catch(e){
+            const il = new Float32Array(n * nC);
+            try {
+              ad.copyTo(il, { planeIndex: 0, format: 'f32' });
+              for(let i=0; i<n; i++){
+                let s = 0;
+                for(let c=0; c<nC; c++) s += il[i*nC + c];
+                out[i] = s / nC;
+              }
+            } catch(e2){ /* best-effort */ }
+          }
+          chunks.push(out);
+          lastTs = (ad.timestamp + (ad.duration || 0)) / 1e6;
+          if(onProgress && totalDur > 0) onProgress(Math.min(lastTs / totalDur, 1));
+          ad.close();
+          maybeFinalize();
+        },
+        error: (e) => fail(new Error('AudioDecoder: ' + (e.message || e))),
+      });
+
+      try {
+        decoder.configure({
+          codec: tr.codec,
+          sampleRate: nativeSR,
+          numberOfChannels: nCh,
+          ...(description ? { description } : {}),
+        });
+      } catch(e){
+        return fail(new Error(`デコーダ設定失敗 (${tr.codec}): ${e.message}`));
+      }
+
+      mp4.setExtractionOptions(tr.id, null, { nbSamples: 1000 });
+      mp4.start();
+    };
+
+    mp4.onSamples = (id, user, samples) => {
+      if(!decoder || resolved) return;
+      for(const s of samples){
+        try {
+          decoder.decode(new EncodedAudioChunk({
+            type:      s.is_sync ? 'key' : 'delta',
+            timestamp: (s.cts / s.timescale) * 1e6,
+            duration:  (s.duration / s.timescale) * 1e6,
+            data:      s.data,
+          }));
+          pendingDecodes++;
+        } catch(e){ /* skip bad chunks */ }
+      }
+    };
+
+    // Stream the file into MP4Box in chunks (memory stays bounded)
+    const CHUNK_SIZE = 8 * 1024 * 1024;
+    let offset = 0;
+
+    async function feed(){
+      if(resolved) return;
+      if(offset >= file.size){
+        try { mp4.flush(); } catch(e){}
+        inputDone = true;
+        if(decoder){
+          try { await decoder.flush(); } catch(e){}
+          try { decoder.close(); } catch(e){}
+        }
+        maybeFinalize();
+        return;
+      }
+      try {
+        const slice = file.slice(offset, Math.min(offset + CHUNK_SIZE, file.size));
+        const buf   = await slice.arrayBuffer();
+        buf.fileStart = offset;
+        mp4.appendBuffer(buf);
+        offset += CHUNK_SIZE;
+      } catch(e){
+        return fail(new Error('ファイル読込: ' + e.message));
+      }
+      // Yield to event loop so decode callbacks can run
+      setTimeout(feed, 0);
+    }
+    feed();
+  });
+}
+
+async function captureAudioViaPlayback(blobUrl, targetSR, onProgress){
+  // 16x is technically Chrome's max but huge files (10GB+, 4K) cannot sustain
+  // it — the audio element silently stalls within seconds. 4x is a safer rate
+  // that completes reliably even for very large files.
+  const PLAYBACK_RATE = 4;
+  // Use <audio> element instead of <video> — for video files, the browser will
+  // extract just the audio track and skip video decoding entirely. This is the
+  // ONLY way to sustain 16x playback for large/4K videos (video decoding cannot
+  // keep up at 16x and causes silent playback stalls within seconds).
+  const video = document.createElement('audio');
+  video.src = blobUrl;
+  video.preload = 'auto';
+  video.crossOrigin = 'anonymous';
+  if(video.preservesPitch !== undefined) video.preservesPitch = false;
+  document.body.appendChild(video);
+
+  const Actx = window.AudioContext || window.webkitAudioContext;
+  let ctx = null, srcNode = null, proc = null, mute = null, progTimer = null;
+
+  try {
+    await new Promise((res, rej) => {
+      video.addEventListener('loadedmetadata', ()=>res(), {once:true});
+      video.addEventListener('error', ()=>rej(new Error('動画メタデータ読み込み失敗')), {once:true});
+    });
+    const dur = video.duration;
+    if(!isFinite(dur) || dur <= 0) throw new Error('動画の長さが取得できません');
+
+    ctx = new Actx();
+    if(ctx.state === 'suspended') await ctx.resume();
+    const ctxSR = ctx.sampleRate;
+
+    srcNode = ctx.createMediaElementSource(video);
+    proc    = ctx.createScriptProcessor(16384, 2, 1);
+    const chunks = [];
+    proc.onaudioprocess = (e)=>{
+      const ib = e.inputBuffer;
+      const n  = ib.length;
+      const c0 = ib.getChannelData(0);
+      const c1 = ib.numberOfChannels > 1 ? ib.getChannelData(1) : c0;
+      const out = new Float32Array(n);
+      for(let i=0; i<n; i++) out[i] = (c0[i] + c1[i]) * 0.5;
+      chunks.push(out);
+    };
+    mute = ctx.createGain();
+    mute.gain.value = 0;
+    srcNode.connect(proc);
+    proc.connect(mute);
+    mute.connect(ctx.destination);
+
+    video.playbackRate = PLAYBACK_RATE;
+    await video.play();
+
+    // Poll-based completion detection (do NOT rely solely on `ended`,
+    // which can fire prematurely or never under high playbackRate / large files).
+    // Also detects stalls and re-applies playbackRate which some browsers reset.
+    await new Promise((resolve, reject)=>{
+      let lastTime    = -1;
+      let stallTicks  = 0;
+      let resolved    = false;
+      const STALL_TICKS_GIVEUP = 600;  // ~3 minutes of zero progress → give up
+
+      const finish = (err)=>{
+        if(resolved) return;
+        resolved = true;
+        clearInterval(progTimer); progTimer = null;
+        video.removeEventListener('error', onErr);
+        video.removeEventListener('waiting', onWait);
+        video.removeEventListener('playing', onPlay);
+        if(err) reject(err); else resolve();
+      };
+      const onErr  = ()=>finish(new Error(`再生中エラー @ ${video.currentTime.toFixed(1)}s`));
+      const onWait = ()=>{ /* buffering — patience */ };
+      const onPlay = ()=>{ stallTicks = 0; };
+
+      progTimer = setInterval(()=>{
+        const ct = video.currentTime;
+        if(onProgress) onProgress(Math.min(ct / dur, 1));
+
+        // Reached the end (within tolerance)
+        if(ct >= dur - 0.2) return finish();
+
+        // Re-apply playback rate (browsers reset it on buffering/seeking)
+        if(video.playbackRate !== PLAYBACK_RATE) video.playbackRate = PLAYBACK_RATE;
+
+        // Stall detection
+        if(Math.abs(ct - lastTime) < 0.001){
+          stallTicks++;
+          // Aggressive nudge: retry play() every ~3s while stalled
+          if(stallTicks % 10 === 0){
+            video.play().catch(()=>{});
+          }
+          if(stallTicks >= STALL_TICKS_GIVEUP){
+            console.warn(`captureAudioViaPlayback: stalled ${(stallTicks*0.3).toFixed(0)}s at ${ct.toFixed(1)}s / ${dur.toFixed(1)}s`);
+            return finish();
+          }
+        } else {
+          stallTicks = 0;
+        }
+        lastTime = ct;
+      }, 300);
+
+      video.addEventListener('error',   onErr);
+      video.addEventListener('waiting', onWait);
+      video.addEventListener('playing', onPlay);
+    });
+    if(onProgress) onProgress(1);
+
+    // Concatenate captured chunks
+    let total = 0;
+    for(const c of chunks) total += c.length;
+    const captured = new Float32Array(total);
+    let off = 0;
+    for(const c of chunks){ captured.set(c, off); off += c.length; }
+
+    // Captured length in real time = dur / PLAYBACK_RATE seconds.
+    // Each captured sample maps to PLAYBACK_RATE/ctxSR seconds of original.
+    // Effective SR (in original time) = ctxSR / PLAYBACK_RATE.
+    const effectiveSR = ctxSR / PLAYBACK_RATE;
+    if(Math.abs(effectiveSR - targetSR) < 1) return captured;
+
+    // Linear-interpolation resample to targetSR (in original time scale)
+    const ratio  = effectiveSR / targetSR;
+    const outLen = Math.floor(captured.length / ratio);
+    const out    = new Float32Array(outLen);
+    for(let i=0; i<outLen; i++){
+      const sIdx = i * ratio;
+      const lo   = Math.floor(sIdx);
+      const hi   = Math.min(lo + 1, captured.length - 1);
+      const t    = sIdx - lo;
+      out[i] = captured[lo]*(1-t) + captured[hi]*t;
+    }
+    return out;
+  } finally {
+    if(progTimer) clearInterval(progTimer);
+    try { srcNode?.disconnect(); } catch(e){}
+    try { proc?.disconnect();    } catch(e){}
+    try { mute?.disconnect();    } catch(e){}
+    try { await ctx?.close();    } catch(e){}
+    try { video.pause(); video.removeAttribute('src'); video.load(); } catch(e){}
+    video.remove();
+  }
+}
+
+// Fetch YouTube audio-only stream via Piped (open-source YouTube proxy with CORS).
+// Tries multiple public instances for reliability. Returns a Blob (m4a/opus).
+const PIPED_INSTANCES = [
+  'https://pipedapi.kavin.rocks',
+  'https://api.piped.privacydev.net',
+  'https://pipedapi.adminforge.de',
+  'https://pipedapi.darkness.services',
+  'https://pipedapi.aeong.one',
+  'https://pipedapi.tokhmi.xyz',
+];
+async function fetchYouTubeAudio(videoId, onProgress){
+  let lastErr = null;
+  for(let i = 0; i < PIPED_INSTANCES.length; i++){
+    const api = PIPED_INSTANCES[i];
+    try {
+      onProgress?.(0.02, `Pipedインスタンス${i+1}/${PIPED_INSTANCES.length}: ${new URL(api).host}`);
+      const ctrl = AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined;
+      const resp = await fetch(`${api}/streams/${encodeURIComponent(videoId)}`, { signal: ctrl });
+      if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const data = await resp.json();
+      const streams = data.audioStreams;
+      if(!streams?.length) throw new Error('音声ストリームなし');
+      // Pick smallest bitrate (sufficient for warp detection, fast download)
+      const sorted = [...streams].sort((a,b)=>{
+        const aQ = parseInt(a.quality) || parseInt(a.bitrate) || 999;
+        const bQ = parseInt(b.quality) || parseInt(b.bitrate) || 999;
+        return aQ - bQ;
+      });
+      const stream = sorted[0];
+      onProgress?.(0.05, `音声DL中… (${stream.quality || stream.format})`);
+
+      const audioResp = await fetch(stream.url);
+      if(!audioResp.ok) throw new Error(`音声DL失敗: HTTP ${audioResp.status}`);
+      const total = parseInt(audioResp.headers.get('content-length')) || 0;
+      const reader = audioResp.body.getReader();
+      const chunks = [];
+      let downloaded = 0;
+      while(true){
+        const { done, value } = await reader.read();
+        if(done) break;
+        chunks.push(value);
+        downloaded += value.length;
+        const mb = (downloaded/1024/1024).toFixed(1);
+        if(total){
+          onProgress?.(0.05 + 0.9 * (downloaded/total), `音声DL ${mb}MB / ${(total/1024/1024).toFixed(1)}MB`);
+        } else {
+          onProgress?.(Math.min(0.5, 0.05 + downloaded/100/1024/1024), `音声DL ${mb}MB`);
+        }
+      }
+      onProgress?.(1, `DL完了 (${(downloaded/1024/1024).toFixed(1)}MB)`);
+      return new Blob(chunks, { type: stream.mimeType || 'audio/mp4' });
+    } catch(e){
+      lastErr = e;
+      console.warn(`Piped (${api}) failed:`, e.message);
+    }
+  }
+  throw new Error(`全Pipedインスタンスが失敗: ${lastErr?.message ?? ''}`);
+}
+
+async function decodeMonoSignal(source, targetSR){
+  let arrayBuffer;
+  if(source instanceof File || source instanceof Blob){
+    arrayBuffer = await source.arrayBuffer();
+  } else if(typeof source === 'string'){
+    // Try fetch first; for large blob URLs fetch may fail, so fallback to XHR
+    try {
+      const resp = await fetch(source);
+      if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      arrayBuffer = await resp.arrayBuffer();
+    } catch(fetchErr) {
+      arrayBuffer = await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', source, true);
+        xhr.responseType = 'arraybuffer';
+        xhr.onload  = () => xhr.status===0 || (xhr.status>=200 && xhr.status<300)
+          ? resolve(xhr.response)
+          : reject(new Error(`XHR失敗 (${xhr.status})`));
+        xhr.onerror = () => reject(new Error('XHR ネットワークエラー'));
+        xhr.send();
+      });
+    }
+  } else {
+    arrayBuffer = source;
+  }
+  if(!arrayBuffer || arrayBuffer.byteLength === 0)
+    throw new Error('音声データが空です');
+
+  const ActxClass = window.AudioContext || window.webkitAudioContext;
+  if(!ActxClass) throw new Error('Web Audio APIが非対応のブラウザです');
+
+  // Decode at native rate first (most reliable across browsers)
+  const tmpCtx = new ActxClass();
+  let nativeBuf;
+  try {
+    if(tmpCtx.state === 'suspended') await tmpCtx.resume();
+    nativeBuf = await new Promise((resolve, reject) =>
+      tmpCtx.decodeAudioData(arrayBuffer, resolve, reject)
+    );
+  } catch(e){
+    throw new Error(`音声デコード失敗 — 非対応コーデックの可能性 (${e.message ?? e})`);
+  } finally {
+    tmpCtx.close();
+  }
+
+  // Resample to targetSR via OfflineAudioContext
+  const outLen = Math.ceil(nativeBuf.duration * targetSR);
+  const offCtx = new OfflineAudioContext(1, outLen, targetSR);
+  const src = offCtx.createBufferSource();
+
+  // Mix to mono before resampling to save memory on multi-channel sources
+  const monoInBuf = offCtx.createBuffer(1, nativeBuf.length, nativeBuf.sampleRate);
+  const monoData  = monoInBuf.getChannelData(0);
+  const nCh = nativeBuf.numberOfChannels;
+  for(let c=0; c<nCh; c++){
+    const ch = nativeBuf.getChannelData(c);
+    for(let i=0; i<monoData.length; i++) monoData[i] += ch[i];
+  }
+  if(nCh > 1) for(let i=0; i<monoData.length; i++) monoData[i] /= nCh;
+
+  src.buffer = monoInBuf;
+  src.connect(offCtx.destination);
+  src.start(0);
+  const rendered = await offCtx.startRendering();
+  return rendered.getChannelData(0).slice();
+}
+
+function applyLowpass(signal, cutoffHz, sr){
+  // One-pole IIR lowpass
+  const a = Math.exp(-2 * Math.PI * cutoffHz / sr);
+  const b = 1 - a;
+  const out = new Float32Array(signal.length);
+  let y = 0;
+  for(let i=0; i<signal.length; i++){
+    y = a*y + b*signal[i];
+    out[i] = y;
+  }
+  return out;
+}
+
+function computeMultiBandRms(signal, frameSize, sr){
+  // 3 bands: low (0-500Hz), mid (500-2000Hz), high (2000Hz+)
+  const lp500  = applyLowpass(signal, 500,  sr);
+  const lp2000 = applyLowpass(signal, 2000, sr);
+  const N = signal.length;
+  const mid  = new Float32Array(N);
+  const high = new Float32Array(N);
+  for(let i=0; i<N; i++){
+    mid[i]  = lp2000[i] - lp500[i];
+    high[i] = signal[i]  - lp2000[i];
+  }
+  return [
+    computeRmsEnv(lp500, frameSize),
+    computeRmsEnv(mid,   frameSize),
+    computeRmsEnv(high,  frameSize),
+  ];
+}
+
+function findMatchPeaksMultiBand(mainEnvs, refEnvs, thresh, minGap, frameSec){
+  const numBands = mainEnvs.length;
+  const M = mainEnvs[0].length;
+  const R = refEnvs[0].length;
+  if(R >= M) return [];
+
+  // Pre-normalize each ref band (z-score)
+  const refNorms = refEnvs.map(refEnv => {
+    let mean = 0;
+    for(let j=0; j<R; j++) mean += refEnv[j];
+    mean /= R;
+    let varSum = 0;
+    for(let j=0; j<R; j++) varSum += (refEnv[j]-mean) ** 2;
+    const std = Math.sqrt(varSum/R) || 1e-9;
+    const norm = new Float32Array(R);
+    for(let j=0; j<R; j++) norm[j] = (refEnv[j]-mean)/std;
+    return norm;
+  });
+
+  // Per-position score = mean of per-band normalized cross-correlations
+  const scores = new Float32Array(M - R + 1);
+  for(let i=0; i<=M-R; i++){
+    let total = 0;
+    for(let b=0; b<numBands; b++){
+      const env = mainEnvs[b];
+      let wMean = 0;
+      for(let j=0; j<R; j++) wMean += env[i+j];
+      wMean /= R;
+      let wVar = 0;
+      for(let j=0; j<R; j++) wVar += (env[i+j]-wMean) ** 2;
+      const wStd = Math.sqrt(wVar/R) || 1e-9;
+      let corr = 0;
+      for(let j=0; j<R; j++) corr += ((env[i+j]-wMean)/wStd) * refNorms[b][j];
+      total += corr / R;
+    }
+    scores[i] = total / numBands;
+  }
+
+  // Local-max peak picking within ±minGap window
+  const peaks = [];
+  for(let i=0; i<scores.length; i++){
+    if(scores[i] < thresh) continue;
+    const lo = Math.max(0, i - minGap);
+    const hi = Math.min(scores.length - 1, i + minGap);
+    let isLocalMax = true;
+    for(let k=lo; k<=hi; k++){
+      if(k !== i && scores[k] > scores[i]){ isLocalMax = false; break; }
+    }
+    if(isLocalMax) peaks.push((i + R/2) * frameSec);
+  }
+  return peaks;
+}
+
+function computeRmsEnv(signal, frameSize){
+  const n   = Math.floor(signal.length / frameSize);
+  const env = new Float32Array(n);
+  for(let f=0; f<n; f++){
+    const off = f * frameSize;
+    let sum = 0;
+    for(let i=0; i<frameSize; i++) sum += signal[off+i] ** 2;
+    env[f] = Math.sqrt(sum / frameSize);
+  }
+  return env;
+}
+
+function findMatchPeaks(mainEnv, refEnv, thresh, minGap, frameSec){
+  const M = mainEnv.length;
+  const R = refEnv.length;
+  if(R >= M) return [];
+
+  // Normalize reference envelope once
+  let rMean = 0;
+  for(let j=0; j<R; j++) rMean += refEnv[j];
+  rMean /= R;
+  let rVar = 0;
+  for(let j=0; j<R; j++) rVar += (refEnv[j]-rMean)**2;
+  const rStd = Math.sqrt(rVar/R) || 1e-9;
+  const refN = new Float32Array(R);
+  for(let j=0; j<R; j++) refN[j] = (refEnv[j]-rMean)/rStd;
+
+  // Slide window and compute normalized cross-correlation
+  const scores = new Float32Array(M - R + 1);
+  for(let i=0; i<=M-R; i++){
+    let wMean=0;
+    for(let j=0; j<R; j++) wMean += mainEnv[i+j];
+    wMean /= R;
+    let wVar=0;
+    for(let j=0; j<R; j++) wVar += (mainEnv[i+j]-wMean)**2;
+    const wStd = Math.sqrt(wVar/R) || 1e-9;
+    let corr=0;
+    for(let j=0; j<R; j++) corr += ((mainEnv[i+j]-wMean)/wStd) * refN[j];
+    scores[i] = corr / R;
+  }
+
+  // Pick peaks above threshold, enforcing minimum gap
+  const peaks = [];
+  let lastPeak = -minGap;
+  for(let i=0; i<scores.length; i++){
+    if(scores[i] >= thresh && i - lastPeak >= minGap){
+      peaks.push((i + R/2) * frameSec);
+      lastPeak = i;
+    }
+  }
+  return peaks;
+}
+
+function buildSegmentsFromTimes(id, times, duration){
+  const panel = panels[id]; if(!panel) return;
+  const segs = [];
+  let prev = 0;
+  for(let i=0; i<times.length; i++){
+    const end = times[i];
+    if(end - prev > 0.5) segs.push({ n:segs.length+1, start:prev, end, dur:end-prev });
+    prev = times[i];
+  }
+  if(duration && duration - prev > 0.5)
+    segs.push({ n:segs.length+1, start:prev, end:duration, dur:duration-prev });
+  panel.segments = segs;
+  panel.curSeg   = -1;
+  renderSegmentUI(id);
+}
+
+/* ═══ Window-wide Drag & Drop ═══ */
+(()=>{
+  let dragOv = null;
+  const ensureOv = ()=>{
+    if(dragOv) return dragOv;
+    dragOv = document.createElement('div');
+    dragOv.id = 'dragov';
+    dragOv.innerHTML = `<div class="dragov-card">📥 ファイルをドロップしてパネル追加<div class="sub">複数ファイル同時ドロップ可</div></div>`;
+    document.body.appendChild(dragOv);
+    return dragOv;
+  };
+  let depth = 0;
+  window.addEventListener('dragenter', (e)=>{
+    if(!e.dataTransfer?.types?.includes('Files')) return;
+    e.preventDefault();
+    depth++;
+    ensureOv().classList.add('show');
+  });
+  window.addEventListener('dragover', (e)=>{
+    if(e.dataTransfer?.types?.includes('Files')) e.preventDefault();
+  });
+  window.addEventListener('dragleave', (e)=>{
+    if(!e.dataTransfer?.types?.includes('Files')) return;
+    depth = Math.max(0, depth-1);
+    if(depth === 0) ensureOv().classList.remove('show');
+  });
+  window.addEventListener('drop', (e)=>{
+    if(!e.dataTransfer?.files?.length) return;
+    e.preventDefault();
+    depth = 0;
+    ensureOv().classList.remove('show');
+    const files = [...e.dataTransfer.files].filter(f =>
+      f.type.startsWith('video/') || f.type.startsWith('audio/'));
+    if(!files.length){ notif('動画/音声ファイルをドロップしてください'); return; }
+    for(const f of files){
+      addPanel('local');
+      const id = 'p' + _pid;
+      loadLocalFile(id, f);
+    }
+    notif(`${files.length} 個のファイルを追加 ✓`);
+  });
+})();
+
+/* ═══ Keyboard ═══ */
+document.addEventListener('keydown',e=>{
+  if(['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName))return;
+  if(e.code==='Space'&&!e.shiftKey){e.preventDefault();masterPlay();}
+  if(e.code==='Space'&& e.shiftKey){e.preventDefault();masterPause();}
+  if(e.code==='KeyR') masterReset();
+  if(e.code==='KeyS') masterSyncPlay();
+  if(e.code==='KeyM') masterMuteAll();
+});
+</script>
+</body>
+</html>
