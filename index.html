@@ -94,7 +94,6 @@
       border-bottom: 1px solid var(--bd2);
     }
     .p-badge { font-size: .58rem; font-weight: 700; padding: 2px 6px; border-radius: 3px; text-transform: uppercase; letter-spacing: .05em; flex-shrink: 0; }
-    .p-badge.yt  { background: rgba(255,50,50,.13); color: #f06060; border: 1px solid rgba(255,50,50,.2); }
     .p-badge.loc { background: rgba(94,173,214,.13); color: var(--blue); border: 1px solid rgba(94,173,214,.2); }
     .p-lbl { flex:1; background:transparent; border:none; color:var(--text); font-size:.8rem; font-weight:600; outline:none; cursor:text; min-width:0; }
     .p-lbl::placeholder { color:var(--mu); }
@@ -145,7 +144,7 @@
       padding:3px; pointer-events:none; z-index:30; display:none;
       box-shadow:0 4px 14px rgba(0,0,0,.6);
     }
-    .seek-preview canvas { display:block; width:200px; height:112px; background:#000; border-radius:3px; }
+    .seek-preview canvas { display:block; width:320px; height:180px; background:#000; border-radius:3px; }
     .seek-preview .pt { font-size:.66rem; text-align:center; color:var(--gold); margin-top:3px; font-family:monospace; font-weight:600; }
     .seek-preview.no-frame canvas { display:none; }
     .seek-preview.no-frame { padding:5px 9px; }
@@ -281,22 +280,6 @@
     .dragov-card { padding:40px 60px; border:3px dashed var(--gold); border-radius:14px; color:var(--gold); font-size:1.4rem; font-weight:700; text-align:center; background:rgba(13,17,32,.9); box-shadow:0 0 40px rgba(200,160,80,.3); }
     .dragov-card .sub { font-size:.85rem; color:var(--mu); font-weight:500; margin-top:8px; }
 
-    /* ── YouTube DL helper modal ── */
-    #ytdlg { position:fixed; inset:0; background:rgba(0,0,0,.75); z-index:9999; display:none; align-items:center; justify-content:center; backdrop-filter:blur(3px); }
-    #ytdlg.show { display:flex; }
-    .ytdlg-card { background:var(--sf); border:1px solid var(--bd); border-radius:12px; padding:24px 28px; min-width:480px; max-width:90vw; box-shadow:0 12px 50px rgba(0,0,0,.7); }
-    .ytdlg-card h3 { color:var(--gold); font-size:1rem; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
-    .ytdlg-card .step { display:flex; gap:10px; align-items:flex-start; margin:14px 0; font-size:.78rem; color:var(--text); }
-    .ytdlg-card .stepn { background:var(--gold); color:#080c14; width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:.72rem; flex-shrink:0; }
-    .ytdlg-card .stepd { flex:1; line-height:1.5; }
-    .ytdlg-row { display:flex; gap:8px; margin-top:6px; }
-    .ytdlg-inp { flex:1; padding:8px 12px; background:var(--inp); border:1px solid var(--bd); border-radius:6px; color:var(--text); font-size:.8rem; outline:none; }
-    .ytdlg-inp:focus { border-color:var(--gold); }
-    .ytdlg-go { padding:8px 16px; background:var(--gold); color:#080c14; border:none; border-radius:6px; font-size:.78rem; font-weight:700; cursor:pointer; white-space:nowrap; }
-    .ytdlg-go:hover { opacity:.85; }
-    .ytdlg-close { margin-top:18px; width:100%; padding:7px; background:transparent; border:1px solid var(--bd); color:var(--mu); border-radius:6px; cursor:pointer; font-size:.74rem; }
-    .ytdlg-close:hover { border-color:var(--gold); color:var(--gold); }
-    .ytdlg-cmd { background:var(--inp); border:1px solid var(--bd); border-radius:5px; padding:8px 10px; font-size:.7rem; color:var(--green); font-family:monospace; margin-top:6px; word-break:break-all; white-space:pre-wrap; max-height:80px; overflow-y:auto; }
 
     /* Scroll */
     ::-webkit-scrollbar { width:5px; height:5px; }
@@ -327,7 +310,6 @@
   <button class="mbtn"   onclick="masterUnmuteAll()">🔊 全解除</button>
 
   <div class="add-g">
-    <button class="add-btn" onclick="addPanel('youtube')">▷ YouTube追加</button>
     <button class="add-btn" onclick="addPanel('local')">📁 動画ファイル追加</button>
     <span style="font-size:.62rem;color:var(--mu2);margin-left:4px;align-self:center">D&D可</span>
   </div>
@@ -347,31 +329,6 @@
 <div id="notif"></div>
 
 <script>
-/* ═══ YouTube IFrame API ═══ */
-let _ytReady = false; let _ytFailed = false; const _ytQ = [];
-window.onYouTubeIframeAPIReady = () => { _ytReady=true; _ytQ.forEach(f=>f()); _ytQ.length=0; };
-const _s=document.createElement('script');
-_s.src='https://www.youtube.com/iframe_api';
-_s.onerror = () => { _ytFailed=true; console.error('YouTube IFrame API のロード失敗 (広告ブロッカー / ネットワーク?)'); };
-document.head.appendChild(_s);
-// Hard timeout fallback in case onload fires but onYouTubeIframeAPIReady never does
-setTimeout(()=>{ if(!_ytReady) _ytFailed = true; }, 10000);
-function onYtReady(fn){
-  if(_ytReady){ fn(); return; }
-  _ytQ.push(fn);
-  // Periodically check if loading failed and fail callbacks gracefully
-  const start = Date.now();
-  const chk = setInterval(()=>{
-    if(_ytReady || Date.now() - start > 10000){
-      clearInterval(chk);
-      if(!_ytReady && _ytQ.includes(fn)){
-        _ytQ.splice(_ytQ.indexOf(fn),1);
-        notif('❌ YouTube API のロード失敗 — 広告ブロッカーやネットワーク設定を確認してください');
-      }
-    }
-  }, 500);
-}
-
 /* ═══ State ═══ */
 let _pid=0;
 const panels={};
@@ -388,12 +345,6 @@ function fmtShort(sec){ // e.g. "1:23" or "45.2s"
   if(sec<60) return sec.toFixed(1)+'s';
   return fmt(sec);
 }
-function ytId(url){
-  url=url.trim();
-  const rs=[/(?:v=|youtu\.be\/|embed\/|live\/|shorts\/)([A-Za-z0-9_\-]{11})/,/^([A-Za-z0-9_\-]{11})$/];
-  for(const r of rs){ const m=url.match(r); if(m)return m[1]; }
-  return null;
-}
 function notif(msg){
   const el=$('notif');
   el.textContent=msg; el.classList.add('show');
@@ -406,20 +357,18 @@ function updateGrid(){
   $('empty').style.display=n===0?'flex':'none';
 }
 
-/* ═══ Player Abstraction ═══ */
-const isYt =id=>panels[id]?.type==='youtube';
+/* ═══ Player Abstraction (HTML5 video/audio only) ═══ */
 const getP =id=>panels[id]?.player;
-function pPlay(id)    { const p=getP(id);if(!p)return;isYt(id)?p.playVideo():p.play().catch(()=>{}); }
-function pPause(id)   { const p=getP(id);if(!p)return;isYt(id)?p.pauseVideo():p.pause(); }
-function pSeek(id,t)  { const p=getP(id);if(!p)return;t=Math.max(0,t);isYt(id)?p.seekTo(t,true):(p.currentTime=t); }
-function pTime(id)    { const p=getP(id);if(!p)return 0;return isYt(id)?p.getCurrentTime():p.currentTime||0; }
-function pDur(id)     { const p=getP(id);if(!p)return 0;return isYt(id)?p.getDuration():p.duration||0; }
-function pVol(id,v)   { const p=getP(id);if(!p)return;panels[id].vol=v;isYt(id)?(p.setVolume(v*100),v>0?p.unMute():p.mute()):(p.volume=v); }
-function pMute(id,m)  { const p=getP(id);if(!p)return;panels[id].muted=m;isYt(id)?(m?p.mute():p.unMute()):(p.muted=m); }
-function pSpeed(id,r) { const p=getP(id);if(!p)return;isYt(id)?p.setPlaybackRate(r):(p.playbackRate=r); }
+function pPlay(id)    { const p=getP(id);if(!p)return;p.play().catch(()=>{}); }
+function pPause(id)   { const p=getP(id);if(!p)return;p.pause(); }
+function pSeek(id,t)  { const p=getP(id);if(!p)return;t=Math.max(0,t);p.currentTime=t; }
+function pTime(id)    { const p=getP(id);if(!p)return 0;return p.currentTime||0; }
+function pDur(id)     { const p=getP(id);if(!p)return 0;return p.duration||0; }
+function pVol(id,v)   { const p=getP(id);if(!p)return;panels[id].vol=v;p.volume=v; }
+function pMute(id,m)  { const p=getP(id);if(!p)return;panels[id].muted=m;p.muted=m; }
+function pSpeed(id,r) { const p=getP(id);if(!p)return;p.playbackRate=r; }
 function pPlaying(id) {
   const p=getP(id);if(!p)return false;
-  if(isYt(id))return typeof YT!=='undefined'&&p.getPlayerState()===YT.PlayerState.PLAYING;
   return !p.paused&&!p.ended;
 }
 
@@ -438,7 +387,6 @@ function addPanel(type){
     grid.appendChild(div);
     panels[id].el=div;
     updateGrid();
-    if(type==='youtube')$('yu_'+id)?.focus();
   } catch(err) {
     console.error('addPanel failed:', err);
     notif('❌ パネル追加エラー: ' + (err?.message ?? err));
@@ -446,9 +394,9 @@ function addPanel(type){
 }
 
 function buildHTML(id,type,num){
-  const badge=type==='youtube'?'<span class="p-badge yt">YouTube</span>':'<span class="p-badge loc">LOCAL</span>';
-  const lbl  =type==='youtube'?`走者 ${num} (YouTube)`:`走者 ${num} (ローカル)`;
-  const setup=type==='youtube'?buildYtSetup(id):buildLocSetup(id);
+  const badge='<span class="p-badge loc">LOCAL</span>';
+  const lbl  =`走者 ${num}`;
+  const setup=buildLocSetup(id);
   return `
   <div class="p-head">
     ${badge}
@@ -470,7 +418,7 @@ function buildHTML(id,type,num){
         <div class="seek-marks" id="sm_${id}"></div>
         <div class="seek-hover" id="sh_${id}"></div>
         <div class="seek-preview" id="spv_${id}">
-          <canvas id="spvc_${id}" width="200" height="112"></canvas>
+          <canvas id="spvc_${id}" width="320" height="180"></canvas>
           <div class="pt" id="spvt_${id}">0:00</div>
         </div>
       </div>
@@ -531,112 +479,12 @@ function buildHTML(id,type,num){
   </div>`;
 }
 
-function buildYtSetup(id){
-  const isFile = location.protocol === 'file:';
-  const fileWarn = isFile ? `
-    <div style="background:rgba(224,85,85,.1);border:1px solid rgba(224,85,85,.35);border-radius:6px;padding:8px 12px;margin:4px 0;font-size:.7rem;color:var(--red);text-align:left;max-width:420px">
-      ⚠ <strong>file:// では YouTube埋め込みが動作しません</strong><br>
-      <span style="color:var(--mu);font-size:.65rem">HTTPサーバ経由でアクセスしてください<br>例: <code style="color:var(--gold);background:rgba(0,0,0,.3);padding:1px 4px;border-radius:2px">python -m http.server 8000</code> → <code style="color:var(--gold)">http://localhost:8000</code></span>
-    </div>` : '';
-  return `<div class="setup-p" id="sp_${id}">
-    <div class="setup-ico">▶</div>
-    <div class="setup-hint">YouTube URL または動画 ID を入力</div>
-    ${fileWarn}
-    <div class="setup-row">
-      <input class="setup-inp" id="yu_${id}" placeholder="https://youtube.com/watch?v=..." onkeydown="if(event.key==='Enter')loadYt('${id}')">
-      <button class="setup-go" onclick="loadYt('${id}')">読み込み</button>
-    </div>
-  </div>`;
-}
 function buildLocSetup(id){
   return `<div class="setup-p" id="sp_${id}">
     <div class="setup-ico">📁</div>
     <div class="setup-hint">動画ファイルを選択（MP4 / WebM / MOV など）</div>
     <label class="file-lbl">📂 ファイルを選択<input type="file" accept="video/*,audio/*" style="display:none" onchange="loadLocal('${id}',this)"></label>
   </div>`;
-}
-
-/* ═══ Load YouTube ═══ */
-/* ═══ YouTube → yt-dlp local download workflow ═══ */
-function genYtCmd(id){
-  const inp = $('yu_'+id);
-  const url = inp?.value?.trim();
-  if(!url){ notif('YouTube URL を入力してください'); inp?.focus(); return; }
-  const vid = ytId(url);
-  const fullUrl = vid ? `https://www.youtube.com/watch?v=${vid}` : url;
-  // Use mp4 best (h264+aac) for max browser compatibility
-  const cmd = `yt-dlp -f "bv*[ext=mp4]+ba[ext=m4a]/b[ext=mp4]/b" --merge-output-format mp4 "${fullUrl}"`;
-  const box  = $('ytcmd_'+id);
-  const txt  = $('ytcmdtxt_'+id);
-  if(txt) txt.textContent = cmd;
-  if(box) box.style.display = 'block';
-}
-
-function copyYtCmd(id){
-  const txt = $('ytcmdtxt_'+id);
-  if(!txt) return;
-  navigator.clipboard?.writeText(txt.textContent).then(
-    () => notif('📋 コマンドをコピーしました ✓'),
-    () => {
-      // Fallback: select text for manual copy
-      const r = document.createRange(); r.selectNode(txt);
-      window.getSelection()?.removeAllRanges();
-      window.getSelection()?.addRange(r);
-      notif('テキストを選択しました — Ctrl+C でコピー');
-    }
-  );
-}
-
-function loadYt(id){
-  const inp=$('yu_'+id); const vid=ytId(inp.value);
-  if(!vid){notif('有効なYouTube URLを入力してください');inp.focus();return;}
-  panels[id].ytVideoId = vid;
-  const va=$('va_'+id);
-  va.innerHTML='<div class="load-ov"><div class="spin"></div>読み込み中…</div>';
-  const pd=document.createElement('div'); pd.id='ytd_'+id; va.appendChild(pd);
-  onYtReady(()=>{
-    // host: youtube-nocookie + origin avoids "エラー 153 (動画プレーヤーの設定エラー)"
-    // that occurs when running from file:// or when origin doesn't match.
-    const isFileProto = location.protocol === 'file:';
-    const pl=new YT.Player('ytd_'+id,{
-      videoId:vid,
-      host: 'https://www.youtube-nocookie.com',
-      playerVars:{
-        autoplay:0, controls:0, modestbranding:1, rel:0, enablejsapi:1,
-        playsinline:1, fs:0,
-        ...(isFileProto ? {} : { origin: location.origin }),
-      },
-      events:{
-        onReady:()=>{
-          va.querySelector('.load-ov')?.remove();
-          panels[id].player=pl; panels[id].ready=true; panels[id].duration=pl.getDuration();
-          showCtrl(id); startTick(id);
-          notif('YouTube動画を読み込みました ✓ — 音声スキャン開始');
-          // Auto-trigger audio scan via Piped (same as local files)
-          startAudioScan(id);
-        },
-        onStateChange:e=>{
-          if(typeof YT==='undefined')return;
-          setPlayBtn(id,e.data===YT.PlayerState.PLAYING);
-          if(e.data===YT.PlayerState.PLAYING)panels[id].duration=pl.getDuration();
-        },
-        onError:e=>{
-          const msgs = {
-            2:   '無効な動画ID',
-            5:   'HTML5プレーヤーの問題',
-            100: '動画が見つからない (削除/非公開)',
-            101: '動画所有者が埋め込みを許可していません',
-            150: '動画所有者が埋め込みを許可していません',
-            153: location.protocol === 'file:'
-              ? 'file:// では動作しません — HTTPサーバ経由でアクセスしてください (例: python -m http.server)'
-              : 'プレーヤー設定エラー',
-          };
-          const msg = msgs[e.data] ?? `不明なエラー (${e.data})`;
-          notif(`❌ YouTubeエラー ${e.data}: ${msg}`);
-        }
-      }
-    });
-  });
 }
 
 /* ═══ Load Local File ═══ */
@@ -646,31 +494,6 @@ function loadLocal(id,inp){
 }
 function loadLocalFile(id, file){
   if(!file || !panels[id]) return;
-  // YouTube panel that downloaded the file → flip to local-style behavior
-  if(panels[id]?.type === 'youtube'){
-    panels[id].type = 'local';
-    if(typeof WARP_DATA_URL !== 'undefined' && typeof _audRefs !== 'undefined'){
-      _audRefs[id] = { dataUrl: WARP_DATA_URL, name: 'warp.mp3' };
-    }
-    // Rebuild header badge to reflect new type
-    const badge = panels[id].el?.querySelector('.p-badge');
-    if(badge){ badge.className = 'p-badge loc'; badge.textContent = 'LOCAL'; }
-    // Add aud-wrap that the YT-mode buildHTML omitted
-    const segSec = $('segsec_'+id);
-    if(segSec && !segSec.querySelector('.aud-wrap')){
-      const w = document.createElement('div');
-      w.innerHTML = `<div class="aud-wrap"><div class="aud-row">
-        <label class="aud-ref-btn">🎵 参照音声<input type="file" accept="audio/*,video/*" style="display:none" onchange="onRefFile('${id}',this)"></label>
-        <span class="aud-ref-name" id="arn_${id}">warp.mp3 (デフォルト)</span>
-        <span style="margin-left:auto" class="aud-lbl">閾値</span>
-        <input type="range" class="thr-rng" id="thr_${id}" min="0.2" max="0.95" value="0.75" step="0.01"
-          oninput="document.getElementById('thrv_${id}').textContent=parseFloat(this.value).toFixed(2)" title="検出閾値">
-        <span class="thr-val" id="thrv_${id}">0.75</span>
-        <button class="aud-go" id="audgo_${id}" onclick="startAudioScan('${id}')">🔍 音声スキャン</button>
-      </div></div>`;
-      segSec.appendChild(w.firstElementChild);
-    }
-  }
   const url=URL.createObjectURL(file);
   panels[id].blobUrl=url; panels[id].file=file;
   const isAudio=file.type.startsWith('audio/');
@@ -738,7 +561,6 @@ function tick(id){
 
 /* ═══ Seek ═══ */
 const _seekRAF = {};      // id → pending requestAnimationFrame id
-const _seekLastYt = {};   // id → last YouTube seek timestamp (ms)
 
 function onSeekInput(id,val){
   const dur=panels[id]?.duration||0;
@@ -749,16 +571,8 @@ function onSeekInput(id,val){
   // Live segment highlight while dragging
   updateCurSeg(id, t);
 
-  // Live preview seek — scrub the video so the frame at `t` is shown immediately.
-  // Local videos: set currentTime on RAF tick (cheap, instant frame preview).
-  // YouTube: throttle to ~10fps to avoid overwhelming the IFrame API.
-  if(isYt(id)){
-    const now = performance.now();
-    if(now - (_seekLastYt[id]||0) > 100){
-      _seekLastYt[id] = now;
-      pSeek(id, t);
-    }
-  } else {
+  // Live preview seek — scrub the video so the frame at `t` is shown immediately
+  if(true){
     if(_seekRAF[id]) cancelAnimationFrame(_seekRAF[id]);
     _seekRAF[id] = requestAnimationFrame(()=>{
       _seekRAF[id] = null;
@@ -794,7 +608,7 @@ function onSeekClick(id, e){
   pSeek(id, t);
 }
 
-// Seek-bar hover: shows a thumbnail (local) or just the timestamp (YouTube).
+// Seek-bar hover: shows a thumbnail of the video at that position.
 function onSeekHover(id, e){
   const p = panels[id]; if(!p) return;
   const dur = p.duration || 0; if(!dur) return;
@@ -809,14 +623,14 @@ function onSeekHover(id, e){
   sh.style.display = 'block';
 
   // Clamp tooltip horizontally inside the seek-wrap
-  const previewW = 210;
+  const previewW = 340;
   const half     = previewW/2;
   const left     = Math.max(half, Math.min(r.width - half, x));
   spv.style.left    = left + 'px';
   spv.style.display = 'block';
   if(spvt) spvt.textContent = fmt(t);
 
-  if(p.type === 'local' && p.blobUrl){
+  if(p.blobUrl){
     spv.classList.remove('no-frame');
     drawSeekPreview(id, t);
   } else {
@@ -1230,9 +1044,7 @@ function onRefFile(id, input){
 async function startAudioScan(id){
   const panel = panels[id];
   if(!panel){ return; }
-  const isYtPanel = panel.type === 'youtube';
-  if(isYtPanel && !panel.ytVideoId){ notif('YouTube動画を読み込んでください'); return; }
-  if(!isYtPanel && !panel.blobUrl){ notif('動画ファイルを読み込んでください'); return; }
+  if(!panel.blobUrl){ notif('動画ファイルを読み込んでください'); return; }
   const ref = _audRefs[id];
   if(!ref){ notif('参照音声ファイルを選択してください'); return; }
 
@@ -1258,18 +1070,6 @@ async function startAudioScan(id){
       if(txt) txt.textContent = `${label}: ${Math.round(p*100)}%`;
     };
 
-    // YouTube path: fetch audio-only stream via Piped (CORS-enabled YouTube proxy)
-    if(isYtPanel){
-      if(txt) txt.textContent = 'YouTube音声を取得中 (Piped経由)…';
-      const blob = await fetchYouTubeAudio(panel.ytVideoId, (p, msg)=>{
-        if(bar) bar.style.width = `${5 + p*30}%`;
-        if(txt) txt.textContent = msg;
-      });
-      if(txt) txt.textContent = 'YouTube音声をデコード中…';
-      if(bar) bar.style.width = '38%';
-      mainSig = await decodeMonoSignal(blob, SR);
-    }
-
     // Path A: small files → direct decodeAudioData (fastest for ≲ 100MB)
     if(!mainSig && fileSize > 0 && fileSize < SMALL_THRESHOLD){
       if(txt) txt.textContent = 'メイン音声をデコード中…';
@@ -1293,8 +1093,8 @@ async function startAudioScan(id){
       }
     }
 
-    // Path C: real-time playback capture (last resort, local only)
-    if(!mainSig && !isYtPanel){
+    // Path C: real-time playback capture (last resort)
+    if(!mainSig){
       const sizeGB = (fileSize/1024/1024/1024).toFixed(2);
       if(txt) txt.textContent = `再生キャプチャに切替 (${sizeGB}GB)…`;
       mainSig = await captureAudioViaPlayback(panel.blobUrl, SR, reportProg('再生キャプチャ'));
@@ -1642,145 +1442,6 @@ async function captureAudioViaPlayback(blobUrl, targetSR, onProgress){
     try { video.pause(); video.removeAttribute('src'); video.load(); } catch(e){}
     video.remove();
   }
-}
-
-// Fetch YouTube audio-only stream via Piped/Invidious (open-source YouTube proxies with CORS).
-// Many public instances get rate-limited or blocked, so we try a large pool.
-// Returns a Blob (m4a/opus).
-const PIPED_INSTANCES = [
-  'https://pipedapi.kavin.rocks',
-  'https://pipedapi.adminforge.de',
-  'https://pipedapi.darkness.services',
-  'https://api.piped.privacydev.net',
-  'https://pipedapi.r4fo.com',
-  'https://pipedapi.ducks.party',
-  'https://pipedapi.reallyaweso.me',
-  'https://pipedapi.leptons.xyz',
-  'https://pipedapi.smnz.de',
-  'https://pipedapi.nosebs.ru',
-];
-const INVIDIOUS_INSTANCES = [
-  'https://invidious.nerdvpn.de',
-  'https://invidious.privacyredirect.com',
-  'https://yewtu.be',
-  'https://inv.nadeko.net',
-  'https://invidious.dhusch.de',
-  'https://invidious.f5.si',
-];
-
-async function _fetchWithTimeout(url, ms = 10000){
-  const ctrl = new AbortController();
-  const t = setTimeout(()=>ctrl.abort(), ms);
-  try { return await fetch(url, { signal: ctrl.signal }); }
-  finally { clearTimeout(t); }
-}
-
-// CORS proxies — public Piped/Invidious instances often don't allow CORS
-// from arbitrary origins (like github.io). We wrap API calls through these
-// general-purpose proxies. Tries each in order until one works.
-const CORS_PROXIES = [
-  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
-  url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
-];
-async function _fetchViaProxy(url, ms = 10000){
-  let lastErr = null;
-  for(const wrap of CORS_PROXIES){
-    try {
-      const r = await _fetchWithTimeout(wrap(url), ms);
-      if(r.ok) return r;
-      lastErr = new Error(`Proxy HTTP ${r.status}`);
-    } catch(e){ lastErr = e; }
-  }
-  throw lastErr ?? new Error('All CORS proxies failed');
-}
-
-async function _streamToBlob(resp, onProgress, mime){
-  const total = parseInt(resp.headers.get('content-length')) || 0;
-  const reader = resp.body.getReader();
-  const chunks = [];
-  let dl = 0;
-  while(true){
-    const { done, value } = await reader.read();
-    if(done) break;
-    chunks.push(value);
-    dl += value.length;
-    const mb = (dl/1024/1024).toFixed(1);
-    if(total) onProgress?.(0.1 + 0.9 * (dl/total), `音声DL ${mb}MB / ${(total/1024/1024).toFixed(1)}MB`);
-    else      onProgress?.(Math.min(0.6, 0.1 + dl/100/1024/1024), `音声DL ${mb}MB`);
-  }
-  onProgress?.(1, `DL完了 ${(dl/1024/1024).toFixed(1)}MB`);
-  return new Blob(chunks, { type: mime || 'audio/mp4' });
-}
-
-// Fetch audio: try direct first (cheapest), then via CORS proxy if blocked.
-async function _fetchAudio(url, onProgress, mime){
-  let resp;
-  try {
-    resp = await _fetchWithTimeout(url, 30000);
-    if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
-  } catch(e) {
-    // Likely CORS or network — retry via proxy
-    onProgress?.(0.1, '音声DL中 (CORSプロキシ経由)');
-    resp = await _fetchViaProxy(url, 60000);
-  }
-  return _streamToBlob(resp, onProgress, mime);
-}
-
-async function _tryPiped(api, videoId, onProgress){
-  const apiUrl = `${api}/streams/${encodeURIComponent(videoId)}`;
-  const resp = await _fetchViaProxy(apiUrl, 10000);
-  const data = await resp.json();
-  const streams = data.audioStreams;
-  if(!streams?.length) throw new Error('audioStreams 空');
-  const sorted = [...streams].sort((a,b)=>(parseInt(a.bitrate||a.quality)||999)-(parseInt(b.bitrate||b.quality)||999));
-  const s = sorted[0];
-  onProgress?.(0.08, `音声DL中 (${s.quality||s.format||'?'})`);
-  return _fetchAudio(s.url, onProgress, s.mimeType);
-}
-
-async function _tryInvidious(api, videoId, onProgress){
-  const apiUrl = `${api}/api/v1/videos/${encodeURIComponent(videoId)}?fields=adaptiveFormats`;
-  const resp = await _fetchViaProxy(apiUrl, 10000);
-  const data = await resp.json();
-  const fmts = (data.adaptiveFormats || []).filter(f => (f.type||'').startsWith('audio/'));
-  if(!fmts.length) throw new Error('audio format なし');
-  fmts.sort((a,b)=>(parseInt(a.bitrate)||999)-(parseInt(b.bitrate)||999));
-  const f = fmts[0];
-  const url = f.url.includes('local=true') ? f.url : f.url + (f.url.includes('?')?'&':'?') + 'local=true';
-  onProgress?.(0.08, `音声DL中 (${f.bitrate||'?'}bps)`);
-  return _fetchAudio(url, onProgress, f.type);
-}
-
-async function fetchYouTubeAudio(videoId, onProgress){
-  const errors = [];
-  let attempt = 0;
-  const total = PIPED_INSTANCES.length + INVIDIOUS_INSTANCES.length;
-
-  for(const api of PIPED_INSTANCES){
-    attempt++;
-    const host = new URL(api).host;
-    onProgress?.(0.01, `[${attempt}/${total}] Piped: ${host}`);
-    try {
-      return await _tryPiped(api, videoId, onProgress);
-    } catch(e){
-      errors.push(`Piped ${host}: ${e.message}`);
-      console.warn(`Piped ${host}:`, e.message);
-    }
-  }
-  for(const api of INVIDIOUS_INSTANCES){
-    attempt++;
-    const host = new URL(api).host;
-    onProgress?.(0.01, `[${attempt}/${total}] Invidious: ${host}`);
-    try {
-      return await _tryInvidious(api, videoId, onProgress);
-    } catch(e){
-      errors.push(`Invidious ${host}: ${e.message}`);
-      console.warn(`Invidious ${host}:`, e.message);
-    }
-  }
-  console.error('All YT audio fetch attempts failed:\n' + errors.join('\n'));
-  throw new Error(`全${total}インスタンス失敗 — 詳細はコンソール (F12) を確認`);
 }
 
 async function decodeMonoSignal(source, targetSR){
