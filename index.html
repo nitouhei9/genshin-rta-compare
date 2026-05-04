@@ -311,7 +311,6 @@
 
   <div class="add-g">
     <button class="add-btn" onclick="addPanel('local')">📁 動画ファイル追加</button>
-    <span style="font-size:.62rem;color:var(--mu2);margin-left:4px;align-self:center">D&D可</span>
   </div>
 </div>
 
@@ -464,16 +463,12 @@ function buildHTML(id,type,num){
     <div class="seg-btns" id="segbtns_${id}"></div>
     <div class="aud-wrap">
       <div class="aud-row">
-        <label class="aud-ref-btn">🎵 参照音声
-          <input type="file" accept="audio/*,video/*" style="display:none" onchange="onRefFile('${id}',this)">
-        </label>
-        <span class="aud-ref-name" id="arn_${id}">warp.mp3 (デフォルト)</span>
-        <span style="margin-left:auto" class="aud-lbl">閾値</span>
+        <span class="aud-lbl">閾値</span>
         <input type="range" class="thr-rng" id="thr_${id}" min="0.2" max="0.95" value="0.75" step="0.01"
           oninput="document.getElementById('thrv_${id}').textContent=parseFloat(this.value).toFixed(2)"
           title="検出閾値 (高いほど厳しく)">
         <span class="thr-val" id="thrv_${id}">0.75</span>
-        <button class="aud-go" id="audgo_${id}" onclick="startAudioScan('${id}')">🔍 セグメントスキャン</button>
+        <button class="aud-go" id="audgo_${id}" style="margin-left:auto" onclick="startAudioScan('${id}')">🔍 セグメントスキャン</button>
       </div>
     </div>
   </div>`;
