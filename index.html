@@ -1644,63 +1644,114 @@ async function captureAudioViaPlayback(blobUrl, targetSR, onProgress){
   }
 }
 
-// Fetch YouTube audio-only stream via Piped (open-source YouTube proxy with CORS).
-// Tries multiple public instances for reliability. Returns a Blob (m4a/opus).
+// Fetch YouTube audio-only stream via Piped/Invidious (open-source YouTube proxies with CORS).
+// Many public instances get rate-limited or blocked, so we try a large pool.
+// Returns a Blob (m4a/opus).
 const PIPED_INSTANCES = [
   'https://pipedapi.kavin.rocks',
-  'https://api.piped.privacydev.net',
   'https://pipedapi.adminforge.de',
   'https://pipedapi.darkness.services',
-  'https://pipedapi.aeong.one',
-  'https://pipedapi.tokhmi.xyz',
+  'https://api.piped.privacydev.net',
+  'https://pipedapi.r4fo.com',
+  'https://pipedapi.ducks.party',
+  'https://pipedapi.reallyaweso.me',
+  'https://pipedapi.leptons.xyz',
+  'https://pipedapi.smnz.de',
+  'https://pipedapi.nosebs.ru',
 ];
-async function fetchYouTubeAudio(videoId, onProgress){
-  let lastErr = null;
-  for(let i = 0; i < PIPED_INSTANCES.length; i++){
-    const api = PIPED_INSTANCES[i];
-    try {
-      onProgress?.(0.02, `Pipedインスタンス${i+1}/${PIPED_INSTANCES.length}: ${new URL(api).host}`);
-      const ctrl = AbortSignal.timeout ? AbortSignal.timeout(8000) : undefined;
-      const resp = await fetch(`${api}/streams/${encodeURIComponent(videoId)}`, { signal: ctrl });
-      if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const data = await resp.json();
-      const streams = data.audioStreams;
-      if(!streams?.length) throw new Error('音声ストリームなし');
-      // Pick smallest bitrate (sufficient for warp detection, fast download)
-      const sorted = [...streams].sort((a,b)=>{
-        const aQ = parseInt(a.quality) || parseInt(a.bitrate) || 999;
-        const bQ = parseInt(b.quality) || parseInt(b.bitrate) || 999;
-        return aQ - bQ;
-      });
-      const stream = sorted[0];
-      onProgress?.(0.05, `音声DL中… (${stream.quality || stream.format})`);
+const INVIDIOUS_INSTANCES = [
+  'https://invidious.nerdvpn.de',
+  'https://invidious.privacyredirect.com',
+  'https://yewtu.be',
+  'https://inv.nadeko.net',
+  'https://invidious.dhusch.de',
+  'https://invidious.f5.si',
+];
 
-      const audioResp = await fetch(stream.url);
-      if(!audioResp.ok) throw new Error(`音声DL失敗: HTTP ${audioResp.status}`);
-      const total = parseInt(audioResp.headers.get('content-length')) || 0;
-      const reader = audioResp.body.getReader();
-      const chunks = [];
-      let downloaded = 0;
-      while(true){
-        const { done, value } = await reader.read();
-        if(done) break;
-        chunks.push(value);
-        downloaded += value.length;
-        const mb = (downloaded/1024/1024).toFixed(1);
-        if(total){
-          onProgress?.(0.05 + 0.9 * (downloaded/total), `音声DL ${mb}MB / ${(total/1024/1024).toFixed(1)}MB`);
-        } else {
-          onProgress?.(Math.min(0.5, 0.05 + downloaded/100/1024/1024), `音声DL ${mb}MB`);
-        }
-      }
-      onProgress?.(1, `DL完了 (${(downloaded/1024/1024).toFixed(1)}MB)`);
-      return new Blob(chunks, { type: stream.mimeType || 'audio/mp4' });
+async function _fetchWithTimeout(url, ms = 10000){
+  const ctrl = new AbortController();
+  const t = setTimeout(()=>ctrl.abort(), ms);
+  try { return await fetch(url, { signal: ctrl.signal }); }
+  finally { clearTimeout(t); }
+}
+
+async function _streamToBlob(resp, onProgress, mime){
+  const total = parseInt(resp.headers.get('content-length')) || 0;
+  const reader = resp.body.getReader();
+  const chunks = [];
+  let dl = 0;
+  while(true){
+    const { done, value } = await reader.read();
+    if(done) break;
+    chunks.push(value);
+    dl += value.length;
+    const mb = (dl/1024/1024).toFixed(1);
+    if(total) onProgress?.(0.1 + 0.9 * (dl/total), `音声DL ${mb}MB / ${(total/1024/1024).toFixed(1)}MB`);
+    else      onProgress?.(Math.min(0.6, 0.1 + dl/100/1024/1024), `音声DL ${mb}MB`);
+  }
+  onProgress?.(1, `DL完了 ${(dl/1024/1024).toFixed(1)}MB`);
+  return new Blob(chunks, { type: mime || 'audio/mp4' });
+}
+
+async function _tryPiped(api, videoId, onProgress){
+  const resp = await _fetchWithTimeout(`${api}/streams/${encodeURIComponent(videoId)}`, 10000);
+  if(!resp.ok) throw new Error(`Piped API HTTP ${resp.status}`);
+  const data = await resp.json();
+  const streams = data.audioStreams;
+  if(!streams?.length) throw new Error('audioStreams 空');
+  const sorted = [...streams].sort((a,b)=>(parseInt(a.bitrate||a.quality)||999)-(parseInt(b.bitrate||b.quality)||999));
+  const s = sorted[0];
+  onProgress?.(0.1, `音声DL中 (${s.quality||s.format||'?'})`);
+  const audio = await _fetchWithTimeout(s.url, 30000);
+  if(!audio.ok) throw new Error(`音声DL HTTP ${audio.status}`);
+  return _streamToBlob(audio, onProgress, s.mimeType);
+}
+
+async function _tryInvidious(api, videoId, onProgress){
+  const resp = await _fetchWithTimeout(`${api}/api/v1/videos/${encodeURIComponent(videoId)}?fields=adaptiveFormats`, 10000);
+  if(!resp.ok) throw new Error(`Invidious API HTTP ${resp.status}`);
+  const data = await resp.json();
+  const fmts = (data.adaptiveFormats || []).filter(f => (f.type||'').startsWith('audio/'));
+  if(!fmts.length) throw new Error('audio format なし');
+  fmts.sort((a,b)=>(parseInt(a.bitrate)||999)-(parseInt(b.bitrate)||999));
+  const f = fmts[0];
+  // Some instances need ?local=true on audio URL to enable CORS proxy
+  const url = f.url.includes('local=true') ? f.url : f.url + (f.url.includes('?')?'&':'?') + 'local=true';
+  onProgress?.(0.1, `音声DL中 (${f.bitrate||'?'}kbps)`);
+  const audio = await _fetchWithTimeout(url, 30000);
+  if(!audio.ok) throw new Error(`音声DL HTTP ${audio.status}`);
+  return _streamToBlob(audio, onProgress, f.type);
+}
+
+async function fetchYouTubeAudio(videoId, onProgress){
+  const errors = [];
+  let attempt = 0;
+  const total = PIPED_INSTANCES.length + INVIDIOUS_INSTANCES.length;
+
+  for(const api of PIPED_INSTANCES){
+    attempt++;
+    const host = new URL(api).host;
+    onProgress?.(0.01, `[${attempt}/${total}] Piped: ${host}`);
+    try {
+      return await _tryPiped(api, videoId, onProgress);
     } catch(e){
-      lastErr = e;
-      console.warn(`Piped (${api}) failed:`, e.message);
+      errors.push(`Piped ${host}: ${e.message}`);
+      console.warn(`Piped ${host}:`, e.message);
     }
   }
-  throw new Error(`全Pipedインスタンスが失敗: ${lastErr?.message ?? ''}`);
+  for(const api of INVIDIOUS_INSTANCES){
+    attempt++;
+    const host = new URL(api).host;
+    onProgress?.(0.01, `[${attempt}/${total}] Invidious: ${host}`);
+    try {
+      return await _tryInvidious(api, videoId, onProgress);
+    } catch(e){
+      errors.push(`Invidious ${host}: ${e.message}`);
+      console.warn(`Invidious ${host}:`, e.message);
+    }
+  }
+  console.error('All YT audio fetch attempts failed:\n' + errors.join('\n'));
+  throw new Error(`全${total}インスタンス失敗 — 詳細はコンソール (F12) を確認`);
 }
 
 async function decodeMonoSignal(source, targetSR){
