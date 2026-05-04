@@ -459,7 +459,7 @@ function buildHTML(id,type,num){
   <div class="seg-sec" id="segsec_${id}">
     <div class="scan-prog" id="scanprog_${id}">
       <div class="scan-bar-w"><div class="scan-bar" id="scanbar_${id}"></div></div>
-      <span class="scan-txt" id="scantxt_${id}">スキャン中… 0%</span>
+      <span class="scan-txt" id="scantxt_${id}">セグメントスキャン中… 0%</span>
     </div>
     <div class="seg-btns" id="segbtns_${id}"></div>
     <div class="aud-wrap">
@@ -473,7 +473,7 @@ function buildHTML(id,type,num){
           oninput="document.getElementById('thrv_${id}').textContent=parseFloat(this.value).toFixed(2)"
           title="検出閾値 (高いほど厳しく)">
         <span class="thr-val" id="thrv_${id}">0.75</span>
-        <button class="aud-go" id="audgo_${id}" onclick="startAudioScan('${id}')">🔍 音声スキャン</button>
+        <button class="aud-go" id="audgo_${id}" onclick="startAudioScan('${id}')">🔍 セグメントスキャン</button>
       </div>
     </div>
   </div>`;
@@ -1063,18 +1063,22 @@ async function startAudioScan(id){
     const fileSize = panel.file?.size ?? 0;
 
     if(bar) bar.style.width = '5%';
+    if(txt) txt.textContent = 'セグメントスキャン中…';
     let mainSig;
 
-    const reportProg = (label) => (p)=>{
-      if(bar) bar.style.width = `${5 + p*35}%`;
-      if(txt) txt.textContent = `${label}: ${Math.round(p*100)}%`;
+    // Progress callback: maps internal stages to a single "セグメントスキャン中 NN%" UI
+    const reportProg = (baseStart, baseSpan) => (p)=>{
+      const pct = baseStart + p * baseSpan;
+      if(bar) bar.style.width = `${pct}%`;
+      if(txt) txt.textContent = `セグメントスキャン中… ${Math.round(pct)}%`;
     };
 
     // Path A: small files → direct decodeAudioData (fastest for ≲ 100MB)
     if(!mainSig && fileSize > 0 && fileSize < SMALL_THRESHOLD){
-      if(txt) txt.textContent = 'メイン音声をデコード中…';
       try {
         mainSig = await decodeMonoSignal(panel.blobUrl, SR);
+        if(bar) bar.style.width = '30%';
+        if(txt) txt.textContent = 'セグメントスキャン中… 30%';
       } catch(e) {
         console.warn('decodeMonoSignal failed:', e);
         mainSig = null;
@@ -1083,53 +1087,49 @@ async function startAudioScan(id){
 
     // Path B: WebCodecs + MP4Box demuxing (audio-only, CPU-speed extraction)
     if(!mainSig && panel.file && window.AudioDecoder){
-      if(txt) txt.textContent = '高速音声抽出 (WebCodecs)…';
       try {
-        mainSig = await extractAudioFast(panel.file, SR, reportProg('音声抽出'));
+        mainSig = await extractAudioFast(panel.file, SR, reportProg(5, 25));
       } catch(e) {
         console.warn('extractAudioFast failed:', e);
-        if(txt) txt.textContent = `高速抽出失敗 (${e.message ?? e})`;
         mainSig = null;
       }
     }
 
     // Path C: real-time playback capture (last resort)
     if(!mainSig){
-      const sizeGB = (fileSize/1024/1024/1024).toFixed(2);
-      if(txt) txt.textContent = `再生キャプチャに切替 (${sizeGB}GB)…`;
-      mainSig = await captureAudioViaPlayback(panel.blobUrl, SR, reportProg('再生キャプチャ'));
+      mainSig = await captureAudioViaPlayback(panel.blobUrl, SR, reportProg(5, 25));
     }
 
     if(!mainSig) throw new Error('音声取得に失敗しました');
 
-    if(txt) txt.textContent = '参照音声をデコード中…';
-    if(bar) bar.style.width = '30%';
+    if(bar) bar.style.width = '40%';
+    if(txt) txt.textContent = 'セグメントスキャン中… 40%';
     const refSrc  = ref.file ? URL.createObjectURL(ref.file) : ref.dataUrl;
     const refSig  = await decodeMonoSignal(refSrc, SR);
     if(ref.file) URL.revokeObjectURL(refSrc);
 
-    if(txt) txt.textContent = 'マルチバンドエンベロープ計算中…';
-    if(bar) bar.style.width = '50%';
+    if(bar) bar.style.width = '55%';
+    if(txt) txt.textContent = 'セグメントスキャン中… 55%';
     const mainEnvs = computeMultiBandRms(mainSig, FRAME, SR);
     const refEnvs  = computeMultiBandRms(refSig,  FRAME, SR);
 
-    if(txt) txt.textContent = '相関マッチング中 (3バンド)…';
-    if(bar) bar.style.width = '70%';
+    if(bar) bar.style.width = '75%';
+    if(txt) txt.textContent = 'セグメントスキャン中… 75%';
     const thrVal      = parseFloat(document.getElementById('thr_'+id)?.value ?? '0.75');
     const minGapFrames = Math.round(3 / 0.1); // 3s minimum gap between matches
     const times = findMatchPeaksMultiBand(mainEnvs, refEnvs, thrVal, minGapFrames, 0.1);
 
     if(bar) bar.style.width = '100%';
-    if(txt) txt.textContent = `ワープ音 ${times.length} 件検出`;
+    if(txt) txt.textContent = `セグメントスキャン完了: ${times.length} 件`;
     buildSegmentsFromTimes(id, times, panel.duration);
-    notif(`ワープ音検出完了: ${times.length} 件 ✓`);
+    notif(`セグメントスキャン完了: ${times.length} 件 ✓`);
     setTimeout(()=>{ if(prog) prog.classList.remove('show'); }, 1800);
   } catch(err){
-    console.error('Audio scan error:', err);
-    notif('音声スキャンエラー: ' + err.message);
+    console.error('Segment scan error:', err);
+    notif('セグメントスキャンエラー');
     if(txt) txt.textContent = 'エラー';
   } finally {
-    if(btn){ btn.disabled=false; btn.textContent='🔍 音声スキャン'; }
+    if(btn){ btn.disabled=false; btn.textContent='🔍 セグメントスキャン'; }
   }
 }
 
