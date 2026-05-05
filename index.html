@@ -67,6 +67,7 @@
     .mbtn.a:hover { background: rgba(200,160,80,.1); }
     .mbtn.r  { border-color: rgba(224,85,85,.4); color: var(--red); }
     .mbtn.r:hover { background: rgba(224,85,85,.1); }
+    .mbtn.jb { padding: 4px 6px; font-size: .68rem; min-width: 32px; }
 
     .add-g { margin-left: auto; display: flex; gap: 6px; }
     .add-btn {
@@ -308,6 +309,16 @@
   <button class="mbtn a" onclick="masterSyncPlay()"  title="オフセット同期再生 [S]">⟳ 同期再生 <span class="kbd">S</span></button>
   <button class="mbtn"   onclick="masterReset()"     title="全動画リセット [R]">↩ リセット <span class="kbd">R</span></button>
   <div class="sep"></div>
+  <!-- Master jog: 大→小→1f → 再生 → 1f→小→大 (symmetric around play) -->
+  <button class="mbtn jb" onclick="masterRelSeek(-60)" title="全体 -1分">⏮1m</button>
+  <button class="mbtn jb" onclick="masterRelSeek(-10)" title="全体 -10秒">⏪10</button>
+  <button class="mbtn jb" onclick="masterRelSeek(-3)"  title="全体 -3秒">⏪3</button>
+  <button class="mbtn jb" onclick="masterFrame(false)" title="全体 -1フレーム">⏪f</button>
+  <button class="mbtn jb" onclick="masterFrame(true)"  title="全体 +1フレーム">f⏩</button>
+  <button class="mbtn jb" onclick="masterRelSeek(3)"   title="全体 +3秒">3⏩</button>
+  <button class="mbtn jb" onclick="masterRelSeek(10)"  title="全体 +10秒">10⏩</button>
+  <button class="mbtn jb" onclick="masterRelSeek(60)"  title="全体 +1分">1m⏭</button>
+  <div class="sep"></div>
   <span class="mbtn" style="cursor:default;padding:3px 6px;gap:6px" title="全パネルの音量 (0でミュート)">
     🔊
     <input type="range" id="mvol" min="0" max="100" value="100" step="1"
@@ -439,17 +450,19 @@ function buildHTML(id,type,num){
       </div>
       <span class="tdisp r" id="dt_${id}">0:00</span>
     </div>
-    <!-- controls -->
+    <!-- controls: 大幅戻し → 細かく戻し → 1F戻し → 再生 → 1F進め → 細かく進め → 大幅進め (対称) -->
     <div class="ctrl-row">
       <button class="cb seg-nav" id="psb_${id}" onclick="prevSeg('${id}')" title="前のセグメント" disabled>⏮S</button>
-      <button class="cb g" id="pb_${id}" onclick="togglePlay('${id}')" title="再生/停止">▶</button>
-      <button class="cb seg-nav" id="nsb_${id}" onclick="nextSeg('${id}')" title="次のセグメント" disabled>S⏭</button>
       <button class="cb" onclick="relSeek('${id}',-60)" title="-1分" style="font-size:.62rem">⏮1m</button>
       <button class="cb" onclick="relSeek('${id}',-10)" title="-10秒">⏪10</button>
       <button class="cb" onclick="relSeek('${id}',-3)"  title="-3秒">⏪3</button>
+      <button class="cb" onclick="frameStep('${id}',false)" title="-1フレーム" style="font-size:.62rem">⏪f</button>
+      <button class="cb g" id="pb_${id}" onclick="togglePlay('${id}')" title="再生/停止">▶</button>
+      <button class="cb" onclick="frameStep('${id}',true)"  title="+1フレーム" style="font-size:.62rem">f⏩</button>
       <button class="cb" onclick="relSeek('${id}',3)"   title="+3秒">3⏩</button>
       <button class="cb" onclick="relSeek('${id}',10)"  title="+10秒">10⏩</button>
       <button class="cb" onclick="relSeek('${id}',60)"  title="+1分" style="font-size:.62rem">1m⏭</button>
+      <button class="cb seg-nav" id="nsb_${id}" onclick="nextSeg('${id}')" title="次のセグメント" disabled>S⏭</button>
       <div class="cg"></div>
       <span class="vol-ico" id="vi_${id}" onclick="toggleMute('${id}')" title="ミュート">🔊</span>
       <input type="range" class="vol-rng" id="vr_${id}" min="0" max="100" value="100" step="1"
@@ -715,6 +728,15 @@ function drawSeekPreview(id, t){
   try { st.video.currentTime = t; } catch(e){ st.busy = false; }
 }
 function relSeek(id,d){ pSeek(id,pTime(id)+d); }
+// Frame step: pauses then nudges by ±1/60s (assumes ~60fps; works fine for
+// 30/60fps RTA footage for visual review).
+const _FRAME_STEP_SEC = 1/60;
+function frameStep(id, forward){
+  if(!panels[id]?.ready) return;
+  pPause(id);
+  const t = Math.max(0, pTime(id) + (forward ? _FRAME_STEP_SEC : -_FRAME_STEP_SEC));
+  pSeek(id, t);
+}
 function togglePlay(id){ if(!panels[id]?.ready)return; pPlaying(id)?pPause(id):pPlay(id); }
 
 /* ═══ Volume / Mute ═══ */
@@ -1085,6 +1107,10 @@ function renderSeekMarkers(id){
 function readyIds(){ return Object.keys(panels).filter(id=>panels[id].ready); }
 
 function masterPlay(){ readyIds().forEach(id=>pPlay(id)); }
+// Master jog: each panel jumps the same delta (offset relations preserved
+// since every panel moves by the same amount in its own timeline).
+function masterRelSeek(d){ readyIds().forEach(id => pSeek(id, pTime(id) + d)); }
+function masterFrame(forward){ readyIds().forEach(id => frameStep(id, forward)); }
 function masterPause(){ readyIds().forEach(id=>pPause(id)); }
 // Toggle: if any panel is playing → pause all; otherwise → play all
 function masterToggle(){
