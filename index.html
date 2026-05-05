@@ -301,14 +301,27 @@
   </div>
 
   <div class="sep"></div>
-  <button class="mbtn g" onclick="masterPlay()"      title="全動画再生 [Space]">▶ 全体再生 <span class="kbd">Space</span></button>
-  <button class="mbtn b" onclick="masterPause()"     title="全動画停止 [Shift+Space]">⏸ 全体停止</button>
-  <div class="sep"></div>
+  <button class="mbtn g" onclick="masterToggle()"    title="全動画 再生/停止 [Space]">▶⏸ 全体 <span class="kbd">Space</span></button>
   <button class="mbtn a" onclick="masterSyncPlay()"  title="オフセット同期再生 [S]">⟳ 同期再生 <span class="kbd">S</span></button>
   <button class="mbtn"   onclick="masterReset()"     title="全動画リセット [R]">↩ リセット <span class="kbd">R</span></button>
   <div class="sep"></div>
-  <button class="mbtn r" onclick="masterMuteAll()">🔇 全ミュート</button>
-  <button class="mbtn"   onclick="masterUnmuteAll()">🔊 全解除</button>
+  <button class="mbtn r" onclick="masterMuteAll()" title="全ミュート [M]">🔇 全ミュート</button>
+  <span class="mbtn" style="cursor:default;padding:3px 6px;gap:6px" title="全パネルの音量">
+    🔊
+    <input type="range" id="mvol" min="0" max="100" value="100" step="1"
+      oninput="masterVol(this.value)"
+      style="width:88px;vertical-align:middle">
+    <span id="mvolt" style="font-size:.65rem;color:var(--mu);min-width:3ch">100</span>
+  </span>
+  <span class="mbtn" style="cursor:default;padding:3px 6px;gap:4px" title="全パネルの再生速度">
+    ⏩
+    <select id="mspd" onchange="masterSpeed(parseFloat(this.value))" style="background:var(--sf3);border:1px solid var(--bd2);border-radius:4px;color:var(--text);font-size:.7rem;padding:2px 4px;outline:none">
+      <option value="0.25">0.25×</option><option value="0.5">0.5×</option>
+      <option value="0.75">0.75×</option><option value="1" selected>1×</option>
+      <option value="1.25">1.25×</option><option value="1.5">1.5×</option>
+      <option value="2">2×</option>
+    </select>
+  </span>
 
   <div class="add-g">
     <button class="add-btn" onclick="addPanel('local')">📁 動画ファイル追加</button>
@@ -1020,6 +1033,40 @@ function readyIds(){ return Object.keys(panels).filter(id=>panels[id].ready); }
 
 function masterPlay(){ readyIds().forEach(id=>pPlay(id)); }
 function masterPause(){ readyIds().forEach(id=>pPause(id)); }
+// Toggle: if any panel is playing → pause all; otherwise → play all
+function masterToggle(){
+  const ids = readyIds(); if(!ids.length) return;
+  const anyPlaying = ids.some(id => pPlaying(id));
+  if(anyPlaying) masterPause(); else masterPlay();
+}
+
+// Master volume: applies the same volume (0..1) to every ready panel and
+// syncs each panel's own volume slider/icon.
+function masterVol(val){
+  const v = Math.max(0, Math.min(1, val/100));
+  const lbl = $('mvolt'); if(lbl) lbl.textContent = Math.round(val);
+  readyIds().forEach(id => {
+    panels[id].vol = v;
+    pVol(id, v);
+    if(v > 0 && panels[id].muted){ panels[id].muted = false; pMute(id, false); }
+    const vi = $('vi_'+id); if(vi) vi.textContent = panels[id].muted || v===0 ? '🔇' : v<0.5 ? '🔉' : '🔊';
+    const vr = $('vr_'+id);
+    if(vr){
+      vr.value = val;
+      vr.style.background = `linear-gradient(to right,var(--blue) ${val}%,var(--bd2) ${val}%)`;
+    }
+  });
+}
+
+// Master speed: applies the same playbackRate to every ready panel and
+// updates each panel's own speed selector.
+function masterSpeed(rate){
+  readyIds().forEach(id => {
+    pSpeed(id, rate);
+    const sel = panels[id].el?.querySelector('.spd');
+    if(sel) sel.value = String(rate);
+  });
+}
 
 function masterSyncPlay(refId=null){
   const ids=readyIds(); if(!ids.length)return;
@@ -1726,7 +1773,9 @@ function buildSegmentsFromTimes(id, times, duration){
 /* ═══ Keyboard ═══ */
 document.addEventListener('keydown',e=>{
   if(['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName))return;
-  if(e.code==='Space'&&!e.shiftKey){e.preventDefault();masterPlay();}
+  // Space toggles play/pause (any-playing → pause all, all-paused → play all).
+  // Shift+Space forces pause as a backup.
+  if(e.code==='Space'&&!e.shiftKey){e.preventDefault();masterToggle();}
   if(e.code==='Space'&& e.shiftKey){e.preventDefault();masterPause();}
   if(e.code==='KeyR') masterReset();
   if(e.code==='KeyS') masterSyncPlay();
