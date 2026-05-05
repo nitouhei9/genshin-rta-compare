@@ -468,7 +468,7 @@ function buildHTML(id,type,num){
       <input type="number" class="off-inp" id="oi_${id}" value="0" step="0.5" onchange="setOffset('${id}',this.value)">
       <span class="off-lbl">秒</span>
       <button class="sync-here" onclick="syncHere('${id}')" title="現在位置を同期基準に">📍 ここで同期</button>
-      <button class="seg-end-tog" id="seg_end_tog_${id}" onclick="toggleAutoSegEnd('${id}')" title="ON にすると現在のセグメント末尾を自動でオフセットに設定">🏁 セグ末尾</button>
+      <button class="seg-end-tog" id="seg_end_tog_${id}" onclick="toggleAutoStop('${id}')" title="ON にすると、オフセットを含むセグメントの末尾で自動停止">⏹ セグ末尾停止</button>
       <span class="off-info" id="oi2_${id}"></span>
     </div>
   </div>
@@ -570,6 +570,31 @@ function tick(id){
 
   // Update active segment highlight every tick (real-time response)
   updateCurSeg(id, t);
+
+  // Auto-stop at the end of the segment containing the offset
+  if(panels[id].autoStopEnabled && pPlaying(id)){
+    const stopAt = computeAutoStopTime(id);
+    if(stopAt != null && t >= stopAt - 0.05){
+      pPause(id);
+      pSeek(id, stopAt);
+      notif(`⏹ ${$('lbl_'+id)?.value||id}: セグメント末尾(${fmt(stopAt)})で自動停止`);
+    }
+  }
+}
+
+// Returns the end time of the segment containing panels[id].offset, or null
+// if there are no segments / offset is past the last segment.
+function computeAutoStopTime(id){
+  const p = panels[id]; if(!p?.segments?.length) return null;
+  const off = p.offset || 0;
+  // Find segment containing offset (start <= off < end). If offset is before
+  // first segment, fall back to first segment's end.
+  for(const s of p.segments){
+    if(off >= s.start && off < s.end) return s.end;
+  }
+  // If offset is below first segment, use first
+  if(off < p.segments[0].start) return p.segments[0].end;
+  return null;
 }
 
 /* ═══ Seek ═══ */
@@ -719,31 +744,29 @@ function syncHere(id){
   notif(`📍 ${$('lbl_'+id)?.value||id}: ${fmt(t)} を同期基準に設定`);
 }
 
-// Toggle auto-sync of offset to current segment's end time. While ON,
-// every time the current segment changes (playback or click), the panel's
-// offset auto-updates to that segment's `end`. Useful for RTA loading-screen
-// alignment.
-function toggleAutoSegEnd(id){
+// Toggle auto-stop at the end of the segment containing the offset.
+// When ON, playback auto-pauses once `currentTime` reaches that segment's
+// `end` time. Useful for previewing the warp/load region one segment at
+// a time.
+function toggleAutoStop(id){
   const p = panels[id]; if(!p) return;
-  p.autoSegEnd = !p.autoSegEnd;
+  p.autoStopEnabled = !p.autoStopEnabled;
   const btn = $('seg_end_tog_'+id);
-  if(btn) btn.classList.toggle('on', !!p.autoSegEnd);
-  if(p.autoSegEnd){
-    notif(`🏁 ${$('lbl_'+id)?.value||id}: セグメント末尾自動同期 ON`);
-    applyAutoSegEnd(id);
+  if(btn) btn.classList.toggle('on', !!p.autoStopEnabled);
+  const stopAt = computeAutoStopTime(id);
+  const el = $('oi2_'+id);
+  if(p.autoStopEnabled){
+    if(stopAt != null){
+      if(el) el.textContent = `⏹ 末尾 ${fmt(stopAt)} で停止`;
+      notif(`⏹ ${$('lbl_'+id)?.value||id}: ${fmt(stopAt)} で自動停止 ON`);
+    } else {
+      if(el) el.textContent = `⏹ 自動停止 ON (セグメント未検出)`;
+      notif(`⏹ 自動停止 ON — オフセットを含むセグメントが見つかりません`);
+    }
   } else {
-    notif(`🏁 ${$('lbl_'+id)?.value||id}: 自動同期 OFF`);
+    if(el) el.textContent = '';
+    notif(`⏹ ${$('lbl_'+id)?.value||id}: 自動停止 OFF`);
   }
-}
-function applyAutoSegEnd(id){
-  const p = panels[id]; if(!p?.autoSegEnd) return;
-  const idx = p.curSeg;
-  const seg = (idx>=0) ? p.segments?.[idx] : null;
-  if(!seg) return;
-  const t = seg.end;
-  p.offset = t;
-  const oi = $('oi_'+id); if(oi) oi.value = t.toFixed(2);
-  const el = $('oi2_'+id); if(el) el.textContent = `🏁 Seg${seg.n}末尾 ${fmt(t)}`;
 }
 
 /* ═══ Remove Panel ═══ */
@@ -818,9 +841,6 @@ function updateCurSeg(id, t){
   const psb=$('psb_'+id), nsb=$('nsb_'+id);
   if(psb)psb.disabled=cur<=0&&(cur===0);
   if(nsb)nsb.disabled=cur>=p.segments.length-1;
-
-  // Auto segment-end offset
-  if(p.autoSegEnd) applyAutoSegEnd(id);
 }
 
 /* ═══ Segment Scan ═══ */
